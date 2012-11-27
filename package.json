@@ -1,0 +1,35 @@
+{
+  "name": "seneca-mysql",
+  "version": "0.0.1",
+  "description": "MySQL database layer for Seneca framework",
+  "main": "lib/mysql-store.js",
+  "scripts": {
+    "test": "expresso test/mysql.test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/mirceaalexandru/seneca-mysql.git"
+  },
+  "keywords": [
+    "seneca",
+    "mysql",
+    "plugin"
+  ],
+  "author": "Mircea Alexandru",
+  "license": "BSD",
+
+  "dependencies": {
+    "seneca":         ">=0.4.1",
+    "mysql":          ">=2.0.0-alpha3",
+    "underscore":     "1.1.x",
+    "node-uuid":      "*"
+  },
+
+  "devDependencies": {
+    "expresso":"*",
+    "vows":"*",
+    "async":"*",
+    "eyes":"*",
+    "gex":"*"
+  }
+}
