@@ -1,77 +1,41 @@
+/*jslint node: true */
+/*global describe:true, it:true */
 /* Copyright (c) 2012 Mircea Alexandru */
+/* 
+ * These tests assume a MySQL database/structure is already created.
+ * execute script/schema.sql to create
+ */
 
-var common_tests = require('./common.test')
-var mysql_ext_tests = require('./mysql.ext.test')
-var seneca   = require('seneca')
-var common   = require('seneca/lib/common')
-var shared   = require('./shared')
+"use strict";
 
+var assert = require('assert');
+var seneca = require('seneca');
+var async = require('async');
+var shared = seneca.test.store.shared;
+var si = seneca();
+var extra = require('./mysql.ext.test.js');
 
-var assert  = common.assert
-var eyes    = common.eyes
-var async   = common.async
-var _       = common._
-var gex     = common.gex
+si.use(require('..'), {name:'senecatest',
+                       host:'localhost',
+                       user:'senecatest',
+                       password:'senecatest',
+                       port:3306});
+si.__testcount = 0;
+var testcount = 0;
 
+describe('mysql', function () {
+  it('basic', function (done) {
+    testcount++;
+    shared.basictest(si, done);
+  });
 
-//These tests assume a MySQL database/structure is already created.
-/*
-  CREATE DATABASE 'senecatest';
-  USE senecatest;
-  GRANT ALL PRIVILEGES ON senecatest.* TO senecatest@localhost;
-  FLUSH PRIVILEGES;
-  CREATE TABLE foo (id VARCHAR(36), p1 VARCHAR(255), p2 VARCHAR(255), seneca VARCHAR(125));
-  CREATE TABLE moon_bar (
-    id VARCHAR(36), 
-    str VARCHAR(255), 
-    `int` INT, 
-    bol BOOLEAN, 
-    wen TIMESTAMP, 
-    mark VARCHAR(255), 
-    `dec` REAL, 
-    arr TEXT, 
-    obj TEXT,
-    seneca VARCHAR(125));
-    CREATE TABLE product (id VARCHAR(36), name VARCHAR(255), price INT);
-*/
+  it('extra', function (done) {
+    testcount++;
+    extra.test(si, done);
+  });
 
-var config = 
-{ log:'print',
-  plugins:[
-    { name:'mysql-store', 
-      opts:{
-        name:'senecatest',
-        host:'127.0.0.1',
-        user:'senecatest',
-        password:'',
-        port:3306
-      } 
-    }
-  ]
-}
+  it('close', function (done) {
+    shared.closetest(si, testcount, done);
+  });
+});
 
-
-var si = seneca(config)
-si.__testcount = 0
-var testcount = 0
-
-module.exports = {
-  basictest: (testcount++, shared.basictest(si)),
-  sqltest: (testcount++, shared.sqltest(si)),
-  extratest: (testcount++, extratest(si)),
-  closetest: shared.closetest(si,testcount)
-}
-
-
-
-function extratest(si) {
-  return function() {
-    si.ready(function(){
-      assert.isNotNull(si)
-      
-      // driver specific tests
-
-      si.__testcount++
-    })
-  }
-}
