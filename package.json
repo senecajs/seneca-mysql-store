@@ -1,6 +1,6 @@
 {
   "name": "seneca-mysql",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "MySQL database layer for Seneca framework",
   "main": "lib/mysql-store.js",
   "scripts": {
@@ -16,8 +16,9 @@
     "plugin"
   ],
   "author": "Mircea Alexandru",
-  "license": "BSD",
+  "contributors": ["Peter Elger <elger.peter@gmail.com> (http://peterelger.com/)"],
 
+  "license": "BSD",
   "dependencies": {
     "seneca":         ">=0.4.1",
     "mysql":          ">=2.0.0-alpha3",
