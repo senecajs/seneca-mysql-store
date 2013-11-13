@@ -23,7 +23,8 @@
     "seneca":         ">=0.4.1",
     "mysql":          ">=2.0.0-alpha3",
     "underscore":     "1.1.x",
-    "node-uuid":      "*"
+    "node-uuid":      "*",
+    "uuid":           "1.4.1"
   },
 
   "devDependencies": {
