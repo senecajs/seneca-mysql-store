@@ -1,6 +1,6 @@
 {
   "name": "seneca-mysql-store",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "MySQL database layer for Seneca framework",
   "main": "lib/mysql-store.js",
   "scripts": {
@@ -16,22 +16,23 @@
     "plugin"
   ],
   "author": "Mircea Alexandru",
-  "contributors": ["Peter Elger <elger.peter@gmail.com> (http://peterelger.com/)"],
-
-  "license": "BSD",
+  "contributors": [
+    "Peter Elger (http://peterelger.com/)",
+    "Chico Charlesworth (https://twitter.com/ccharlesworth)"
+  ],
+  "license": "MIT",
   "dependencies": {
-    "seneca":         ">=0.4.1",
-    "mysql":          ">=2.0.0-alpha3",
-    "underscore":     "1.1.x",
-    "node-uuid":      "*",
-    "uuid":           "1.4.1"
+    "seneca": "~0.5.15",
+    "mysql": "*",
+    "underscore": "~1.6.0",
+    "node-uuid": "~1.4.1"
   },
-
   "devDependencies": {
-    "expresso":"*",
-    "vows":"*",
-    "async":"*",
-    "eyes":"*",
-    "gex":"*"
+    "expresso": "*",
+    "vows": "*",
+    "async": "*",
+    "eyes": "*",
+    "gex": "*",
+    "chai": "~1.9.1"
   }
 }
