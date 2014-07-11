@@ -4,7 +4,7 @@
   "description": "MySQL database layer for Seneca framework",
   "main": "lib/mysql-store.js",
   "scripts": {
-    "test": "expresso test/mysql.test.js"
+    "test": "mocha test/*.test.js"
   },
   "repository": {
     "type": "git",
@@ -22,13 +22,14 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "seneca": "~0.5.15",
+    "seneca": "0.5.17",
     "mysql": "*",
+    "seneca-store-test": "~0.1.0",
     "underscore": "~1.6.0",
     "node-uuid": "~1.4.1"
   },
   "devDependencies": {
-    "expresso": "*",
+    "mocha": "*",
     "vows": "*",
     "async": "*",
     "eyes": "*",
