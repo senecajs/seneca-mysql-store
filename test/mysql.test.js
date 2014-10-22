@@ -1,41 +1,65 @@
-/*jslint node: true */
-/*global describe:true, it:true */
-/* Copyright (c) 2012 Mircea Alexandru */
-/* 
- * These tests assume a MySQL database/structure is already created.
- * execute script/schema.sql to create
- */
+/* Copyright (c) Year Author, *** License */
+'use strict';
 
-"use strict";
 
-var assert = require('assert');
-var seneca = require('seneca');
-var async = require('async');
-var shared = seneca.test.store.shared;
+var seneca = require('seneca'),
+    shared = require('seneca-store-test'),
+    assert = require('assert'),
+    async = require('async');
+
 var si = seneca();
-var extra = require('./mysql.ext.test.js');
 
-si.use(require('..'), {name:'senecatest',
+//Enter your data source details
+var dataSource={name:'senecatest',
                        host:'localhost',
-                       user:'senecatest',
-                       password:'senecatest',
-                       port:3306});
+                       user:'root',
+                       password:'',
+                       port:3306};
+
+si.use(require('..'), dataSource);
+
 si.__testcount = 0;
 var testcount = 0;
 
-describe('mysql', function () {
-  it('basic', function (done) {
+describe('data-store', function(){
+  // Set the timeout for your tests.
+  this.timeout(30000);
+
+  it('basic', function(done){
     testcount++;
-    shared.basictest(si, done);
+        shared.basictest(si,done);
   });
 
-  it('extra', function (done) {
-    testcount++;
-    extra.test(si, done);
-  });
+  // Uncomment this function if you have extra tests to perform
+  // it('extra', function(done){
+  //   testcount++;
+  //   extraTest(si,done);
+  // });
 
-  it('close', function (done) {
-    shared.closetest(si, testcount, done);
+  it('close', function(done){
+    shared.closetest(si,testcount,done);
   });
 });
+
+
+// Add your extra tests to async.series array
+function extraTest(si, done){
+  console.log('Extra');
+  assert.notEqual(si, null);
+
+  async.series(
+  [
+
+  ],
+
+  function(err, results) {
+    err = err || null;
+    if(err) {
+      console.dir(err);
+    }
+    si.__testcount++;
+    assert.equal(err, null);
+    done && done();
+  });
+}
 
