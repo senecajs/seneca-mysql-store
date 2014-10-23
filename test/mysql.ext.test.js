@@ -149,6 +149,16 @@ exports.test = function(si, cb) {
       foo.list$({}, verify(cb, function(res){
         assert.equal( 1, res.length)
       }))
+    },
+
+    reportAllErrors: function(cb) {
+      console.log('reportAllErrors');
+      var foo = si.make('foo')
+      foo.missing_attribute = 'v1'
+
+      foo.save$(verify(cb, function (err, foo1) {
+        assert.isNotNull(err)
+      }))
     }
   },
   function(err, out) {
