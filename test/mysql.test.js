@@ -1,7 +1,7 @@
 /*jslint node: true */
 /*global describe:true, it:true */
 /* Copyright (c) 2012 Mircea Alexandru */
-/* 
+/*
  * These tests assume a MySQL database/structure is already created.
  * execute script/schema.sql to create
  */
@@ -11,7 +11,7 @@
 var assert = require('assert');
 var seneca = require('seneca');
 var async = require('async');
-var shared = seneca.test.store.shared;
+var shared = require('seneca-store-test');
 var si = seneca();
 var extra = require('./mysql.ext.test.js');
 
@@ -31,11 +31,13 @@ describe('mysql', function () {
 
   it('extra', function (done) {
     testcount++;
-    extra.test(si, done);
+    // extra.test(si, done);
+    done('wip');
   });
 
   it('close', function (done) {
-    shared.closetest(si, testcount, done);
+    // shared.closetest(si, testcount, done);
+    done('wip');
   });
 });
 
