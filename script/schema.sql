@@ -6,7 +6,7 @@ CREATE DATABASE senecatest;
 
 USE senecatest;
 
-DROP USER senecatest;
+DROP USER 'senecatest'@'localhost';
 CREATE USER 'senecatest'@'localhost' IDENTIFIED BY 'senecatest';
 GRANT ALL PRIVILEGES ON senecatest.* TO senecatest@localhost;
 FLUSH PRIVILEGES;
