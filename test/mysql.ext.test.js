@@ -156,9 +156,10 @@ exports.test = function(si, cb) {
       var foo = si.make('foo')
       foo.missing_attribute = 'v1'
 
-      foo.save$(verify(cb, function (err, foo1) {
+      foo.save$(function (err, foo1) {
         assert.isNotNull(err)
-      }))
+        cb()
+      })
     }
   },
   function(err, out) {
