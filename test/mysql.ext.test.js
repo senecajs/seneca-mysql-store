@@ -166,6 +166,7 @@ exports.test = function(si, cb) {
       console.log('allowAutoIncrementId');
 
       var inc = si.make('incremental')
+      inc.p1 = 'v1'
 
       inc.save$(function (err, inc1) {
         assert.isNull(err)
@@ -174,7 +175,8 @@ exports.test = function(si, cb) {
         inc.load$(inc1.id, verify(cb, function (inc2) {
           assert.isNull(err)
           assert.isNotNull(inc2)
-          assert.equal(inc1.id, inc2.id)
+          assert.equal(inc2.id, inc1.id)
+          assert.equal(inc2.p1, 'v1')
         }))
       })
     }
