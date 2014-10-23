@@ -30,14 +30,13 @@ describe('mysql', function () {
   });
 
   it('extra', function (done) {
-    testcount++;
+    // testcount++;
     // extra.test(si, done);
     done('wip');
   });
 
   it('close', function (done) {
-    // shared.closetest(si, testcount, done);
-    done('wip');
+    shared.closetest(si, testcount, done);
   });
 });
 
