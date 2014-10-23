@@ -30,9 +30,8 @@ describe('mysql', function () {
   });
 
   it('extra', function (done) {
-    // testcount++;
-    // extra.test(si, done);
-    done('wip');
+    testcount++;
+    extra.test(si, done);
   });
 
   it('close', function (done) {
