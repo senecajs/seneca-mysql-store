@@ -27,3 +27,9 @@ CREATE TABLE moon_bar (
 
 CREATE TABLE product (id VARCHAR(36), name VARCHAR(255), price INT);
 
+CREATE TABLE incremental (
+  id INT AUTO_INCREMENT,
+  p1 VARCHAR(255),
+  PRIMARY KEY (id)
+);
+

@@ -20,6 +20,17 @@ si.use(require('..'), {name:'senecatest',
                        user:'senecatest',
                        password:'senecatest',
                        port:3306});
+
+si.use(require('..'), {
+                       map: { '-/-/incremental': '*' },
+                       name:'senecatest',
+                       host:'localhost',
+                       user:'senecatest',
+                       password:'senecatest',
+                       port:3306,
+                       auto_increment: true
+                     });
+
 si.__testcount = 0;
 var testcount = 0;
 
