@@ -160,6 +160,23 @@ exports.test = function(si, cb) {
         assert.isNotNull(err)
         cb()
       })
+    },
+
+    allowAutoIncrementId: function(cb) {
+      console.log('allowAutoIncrementId');
+
+      var inc = si.make('incremental')
+
+      inc.save$(function (err, inc1) {
+        assert.isNull(err)
+        assert.isNotNull(inc1.id)
+
+        inc.load$(inc1.id, verify(cb, function (inc2) {
+          assert.isNull(err)
+          assert.isNotNull(inc2)
+          assert.equal(inc1.id, inc2.id)
+        }))
+      })
     }
   },
   function(err, out) {
