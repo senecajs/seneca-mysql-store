@@ -8,6 +8,7 @@
 
 "use strict";
 
+var _ = require('lodash');
 var assert = require('assert');
 var seneca = require('seneca');
 var async = require('async');
@@ -15,21 +16,23 @@ var shared = require('seneca-store-test');
 var si = seneca();
 var extra = require('./mysql.ext.test.js');
 
-si.use(require('..'), {name:'senecatest',
-                       host:'localhost',
-                       user:'senecatest',
-                       password:'senecatest',
-                       port:3306});
+var dbConfig = {
+  name:'senecatest',
+  host:'localhost',
+  user:'senecatest',
+  password:'senecatest',
+  port:3306
+};
 
-si.use(require('..'), {
-                       map: { '-/-/incremental': '*' },
-                       name:'senecatest',
-                       host:'localhost',
-                       user:'senecatest',
-                       password:'senecatest',
-                       port:3306,
-                       auto_increment: true
-                     });
+var incrementConfig = _.assign(
+    {
+      map: { '-/-/incremental': '*' },
+      auto_increment: true
+    }, dbConfig);
+
+si.use(require('..'), dbConfig);
+
+si.use(require('..'), incrementConfig);
 
 si.__testcount = 0;
 var testcount = 0;
