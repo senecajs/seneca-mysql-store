@@ -19,7 +19,8 @@
   "contributors": [
     "Peter Elger (http://peterelger.com/)",
     "Chico Charlesworth (https://twitter.com/ccharlesworth)",
-    "Paolo Chiod (https://github.com/paolochiodi)"
+    "Paolo Chiodi (https://github.com/paolochiodi)",
+    "Guy Ellis (https://github.com/guyellis)"
   ],
   "license": "MIT",
   "dependencies": {

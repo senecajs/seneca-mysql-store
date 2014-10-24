@@ -20,10 +20,8 @@ var fs = require('fs');
 var dbConfig;
 if(fs.existsSync(__dirname + '/../test/dbconfig.mine.js')) {
   dbConfig = require('./dbconfig.mine');
-  console.log('mine exists');
 } else {
   dbConfig = require('./dbconfig.example');
-  console.log('mine does not exists');
 }
 
 console.log(dbConfig);
