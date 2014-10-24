@@ -5,9 +5,9 @@ MySQL database layer for Seneca framework
 
 
 
-Current Version: 0.0.5
+Current Version: 0.1.0
 
-Tested on: Node 0.10.24, Seneca 0.5.15
+Tested on: Node 0.10.32, Seneca 0.5.21
 
 
 Acknowledgements
