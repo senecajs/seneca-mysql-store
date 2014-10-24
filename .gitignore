@@ -18,3 +18,5 @@ node_modules
 npm-debug.log
 
 README.html
+
+test/dbconfig.mine.js

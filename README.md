@@ -11,8 +11,9 @@ Tests
 -----
 Prerequisite:
 * Must have MySQL installed
-* Must have a DB in MySQL called `sencecatest`
-* Configure your username/password for the DB in the tests... 
+* Configure your username/password/database for the DB in the tests.
+  * Do this by copying the dbconfig.example.js file in the /test/ directory to dbconfig.mine.js
+  * Change the values to match those of your MySQL connection
 
 Acknowledgements
 ----------------

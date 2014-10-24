@@ -15,14 +15,18 @@ var async = require('async');
 var shared = require('seneca-store-test');
 var si = seneca();
 var extra = require('./mysql.ext.test.js');
+var fs = require('fs');
 
-var dbConfig = {
-  name:'senecatest',
-  host:'localhost',
-  user:'senecatest',
-  password:'senecatest',
-  port:3306
-};
+var dbConfig;
+if(fs.existsSync(__dirname + '/../test/dbconfig.mine.js')) {
+  dbConfig = require('./dbconfig.mine');
+  console.log('mine exists');
+} else {
+  dbConfig = require('./dbconfig.example');
+  console.log('mine does not exists');
+}
+
+console.log(dbConfig);
 
 var incrementConfig = _.assign(
     {
