@@ -172,7 +172,7 @@ exports.test = function(si, cb) {
         assert.isNull(err)
         assert.isNotNull(inc1.id)
 
-        inc.load$(inc1.id, verify(cb, function (inc2) {
+        inc.load$({id: inc1.id}, verify(cb, function (inc2) {
           assert.isNull(err)
           assert.isNotNull(inc2)
           assert.equal(inc2.id, inc1.id)
