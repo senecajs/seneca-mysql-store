@@ -6,6 +6,8 @@ CREATE DATABASE senecatest;
 
 USE senecatest;
 
+/* Create user senecatest with harmless privilege so that DROP USER does not throw error on next line if user does not exist */
+GRANT USAGE ON *.* TO 'senecatest'@'localhost';
 DROP USER 'senecatest'@'localhost';
 CREATE USER 'senecatest'@'localhost' IDENTIFIED BY 'senecatest';
 GRANT ALL PRIVILEGES ON senecatest.* TO senecatest@localhost;
