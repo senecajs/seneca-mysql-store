@@ -112,31 +112,6 @@ exports.test = function(si, cb) {
       }))
     },
 
-    // test limit$
-    listwithlimit: function(cb) {
-      console.log('listwithlimit');
-      scratch.foo2.list$({limit$:1}, verify(cb, function(res){
-        assert.equal( 1, res.length)
-      }))
-    },
-
-    // test sort$
-    listwithsort1: function(cb) {
-      console.log('listwithsort1');
-      scratch.foo2.list$({sort$:{'p1':-1}}, verify(cb, function(res){
-        assert.equal( 2, res.length)
-        assert.equal('v2',res[0].p1)
-      }))
-    },
-
-    listwithsort2: function(cb) {
-      console.log('listwithsort2');
-      scratch.foo2.list$({sort$:{'p1':1}}, verify(cb, function(res){
-        assert.equal( 2, res.length)
-        assert.equal('v3',res[0].p1)
-      }))
-    },
-
     remove1: function(cb) {
       console.log('remove1');
       scratch.foo2.remove$( {id:scratch.foo2.id}, verify(cb, function(err){

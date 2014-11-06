@@ -45,6 +45,16 @@ describe('mysql', function () {
     shared.basictest(si, done);
   });
 
+  it('sort', function(done){
+    testcount++;
+    shared.sorttest(si,done);
+  });
+
+  it('limits', function(done){
+    testcount++;
+    shared.limitstest(si,done);
+  });
+
   it('extra', function (done) {
     testcount++;
     extra.test(si, done);
