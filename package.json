@@ -24,7 +24,7 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "seneca": "~0.5.15",
+    "seneca": "~0.5.21",
     "mysql": "*",
     "lodash": "^2.4.1",
     "node-uuid": "~1.4.1"
