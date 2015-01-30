@@ -35,7 +35,7 @@
     "eyes": "*",
     "gex": "*",
     "mocha": "^2.0.0",
-    "seneca-store-test": "^0.2.2",
+    "seneca-store-test":  "git://github.com/paolochiodi/seneca-store-test.git",
     "vows": "*"
   }
 }
