@@ -1,7 +1,7 @@
 /*jslint node: true */
 /*jslint asi: true */
 /*global describe:true, it:true */
-/* Copyright (c) 2010-2012 Richard Rodger */
+/* Copyright (c) 2010-2015 Richard Rodger */
 
 "use strict";
 
@@ -9,7 +9,6 @@ var seneca = require('seneca')
 var chai = require('chai');
 chai.Assertion.includeStack = true;
 var assert = chai.assert
-var eyes = require('eyes');
 var async = require('async');
 
 

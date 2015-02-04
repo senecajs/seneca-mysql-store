@@ -1,3 +1,6 @@
+# 0.4.0 2015/02/04
+- updated for seneca 0.6.1
+
 # 0.3.0 2015/01/30
 - add query reporting including SLOW, SLOWER, SLOWEST tags
 - update version references

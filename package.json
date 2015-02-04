@@ -2,7 +2,7 @@
   "name": "seneca-mysql-store",
   "version": "0.3.0",
   "description": "MySQL database layer for Seneca framework",
-  "main": "lib/mysql-store.js",
+  "main": "mysql-store.js",
   "scripts": {
     "test": "./node_modules/.bin/mocha test/*.test.js"
   },
@@ -20,22 +20,28 @@
     "Peter Elger (http://peterelger.com/)",
     "Chico Charlesworth (https://twitter.com/ccharlesworth)",
     "Paolo Chiodi (https://github.com/paolochiodi)",
-    "Guy Ellis (https://github.com/guyellis)"
+    "Guy Ellis (https://github.com/guyellis)",
+    "Richard Rodger (http://richardrodger.com/)"
   ],
   "license": "MIT",
   "dependencies": {
     "lodash": "~3.0.1",
     "mysql": "~2.5.4",
     "node-uuid": "~1.4.1",
-    "seneca": "~0.5.21"
+    "seneca": "plugin"
   },
   "devDependencies": {
-    "async": "^0.9.0",
-    "chai": "^1.10.0",
-    "eyes": "^0.1.8",
-    "gex": "^0.2.0",
-    "mocha": "^2.0.0",
+    "async": "~0.9.0",
+    "chai": "~1.10.0",
+    "gex": "~0.2.0",
+    "mocha": "~2.0.0",
     "seneca-store-test": "git://github.com/paolochiodi/seneca-store-test.git",
-    "vows": "^0.8.1"
-  }
+    "vows": "~0.8.1"
+  },
+  "files": [
+    "mysql-store.js",
+    "README.md",
+    "LICENSE.txt",
+    "HISTORY.md"
+  ]
 }

@@ -18,6 +18,14 @@ var SENECA_TYPE_COLUMN = 'seneca';
 
 module.exports = function(opts) {
   var seneca = this;
+
+  opts = seneca.util.deepextend({
+    minwait: MIN_WAIT,
+    maxwait: MAX_WAIT,
+    query_log_level: 'debug'
+  },opts)
+
+
   var desc;
   var minwait;
   var collmap = {};
@@ -25,6 +33,9 @@ module.exports = function(opts) {
   var waitmillis = MIN_WAIT;
   var spec;
   var _connectionPool;
+
+
+
 
   var connectionPool = {
     query: function(query, inputs, cb) {
@@ -54,7 +65,7 @@ module.exports = function(opts) {
           log.err = err;
         }
 
-       seneca.log.info('MYSQL CALL:' + JSON.stringify(log));
+        seneca.log(opts.query_log_level,'mysql',log);
 
         return cb.apply(this, arguments);
       }
@@ -81,8 +92,6 @@ module.exports = function(opts) {
   };
 
 
-  opts.minwait = opts.minwait || MIN_WAIT;
-  opts.maxwait = opts.maxwait || MAX_WAIT;
 
 
 
