@@ -1,6 +1,6 @@
 {
   "name": "seneca-mysql-store",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "MySQL database layer for Seneca framework",
   "main": "mysql-store.js",
   "scripts": {

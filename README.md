@@ -1,13 +1,15 @@
 seneca-mysql-store
 ==================
 
+<!--
 [![Build Status](https://travis-ci.org/mirceaalexandru/seneca-mysql-store.svg?branch=master)](https://travis-ci.org/mirceaalexandru/seneca-mysql-store)
+-->
 
 MySQL database layer for Seneca framework
 
-Current Version: 0.3.0
+Current Version: 0.4.0
 
-Tested on: Node 0.10.36, Seneca 0.5.21
+Tested on: Node 0.10.36, Seneca 0.6.1
 
 Tests
 -----
