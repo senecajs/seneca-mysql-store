@@ -164,7 +164,7 @@ module.exports = function(opts) {
     var defaultConn = {
       connectionLimit: conf.poolSize || 5,
       host: conf.host,
-      user: conf.user,
+      user: conf.user || conf.username,
       password: conf.password,
       database: conf.name
     };
