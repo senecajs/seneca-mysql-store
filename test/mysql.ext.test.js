@@ -5,12 +5,8 @@
 
 "use strict";
 
-var seneca = require('seneca')
-var chai = require('chai');
-chai.Assertion.includeStack = true;
-var assert = chai.assert
+var assert = require('assert');
 var async = require('async');
-
 
 var scratch = {}
 var verify = function(cb,tests){
@@ -43,7 +39,7 @@ exports.test = function(si, cb) {
       foo.p1 = 'v1'
 
       foo.save$(foo, verify(cb, function(foo){
-        assert.isNotNull(foo.id)
+        assert.ok(foo.id)
         assert.equal('v1',foo.p1)
         scratch.foo1 = foo
       }))
@@ -64,7 +60,7 @@ exports.test = function(si, cb) {
     load1: function(cb) {
       console.log('load1');
       scratch.foo1.load$({id:scratch.foo1.id}, verify(cb, function(res){
-        assert.isNotNull(res.id)
+        assert.ok(res.id)
       }))
     },
 
@@ -73,7 +69,7 @@ exports.test = function(si, cb) {
       scratch.foo1.p1 = 'v2'
 
       scratch.foo1.save$(verify(cb, function(foo){
-        assert.isNotNull(foo.id)
+        assert.ok(foo.id)
         assert.equal('v2',foo.p1)
       }))
     },
@@ -91,7 +87,7 @@ exports.test = function(si, cb) {
       foo.p1 = 'v3'
 
       foo.save$(verify(cb, function(foo){
-        assert.isNotNull(foo.id)
+        assert.ok(foo.id)
         assert.equal('v3',foo.p1)
         scratch.foo2 = foo
       }))
@@ -131,7 +127,7 @@ exports.test = function(si, cb) {
       foo.missing_attribute = 'v1'
 
       foo.save$(function (err, foo1) {
-        assert.isNotNull(err)
+        assert.ok(err)
         cb()
       })
     },
@@ -143,12 +139,12 @@ exports.test = function(si, cb) {
       inc.p1 = 'v1'
 
       inc.save$(function (err, inc1) {
-        assert.isNull(err)
-        assert.isNotNull(inc1.id)
+        assert.strictEqual(null, err)
+        assert.ok(inc1.id)
 
         inc.load$({id: inc1.id}, verify(cb, function (inc2) {
-          assert.isNull(err)
-          assert.isNotNull(inc2)
+          assert.strictEqual(null, err)
+          assert.ok(inc2)
           assert.equal(inc2.id, inc1.id)
           assert.equal(inc2.p1, 'v1')
         }))
