@@ -26,7 +26,7 @@
     "Richard Rodger (http://richardrodger.com/)"
   ],
   "dependencies": {
-    "lodash": "~3.0.1",
+    "lodash": "~3.10.0",
     "mysql": "~2.5.4",
     "node-uuid": "~1.4.1"
   },
