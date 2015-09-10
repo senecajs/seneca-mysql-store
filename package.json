@@ -27,7 +27,7 @@
   ],
   "dependencies": {
     "lodash": "~3.10.0",
-    "mysql": "~2.5.4",
+    "mysql": "~2.9.0",
     "node-uuid": "~1.4.1"
   },
   "devDependencies": {
