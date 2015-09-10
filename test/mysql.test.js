@@ -9,7 +9,6 @@
 "use strict";
 
 var _ = require('lodash');
-var assert = require('assert');
 var seneca = require('seneca');
 var async = require('async');
 var shared = require('seneca-store-test');
