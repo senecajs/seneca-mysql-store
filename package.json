@@ -4,7 +4,7 @@
   "description": "MySQL database layer for Seneca framework",
   "main": "mysql-store.js",
   "scripts": {
-    "test": "./node_modules/.bin/mocha test/*.test.js"
+    "test": "node_modules/.bin/lab test -r console -v"
   },
   "repository": {
     "type": "git",
@@ -34,7 +34,7 @@
     "async": "~0.9.0",
     "chai": "~1.10.0",
     "gex": "~0.2.0",
-    "mocha": "~2.0.0",
+    "lab": "^5.16.0",
     "seneca-store-test": "git://github.com/paolochiodi/seneca-store-test.git",
     "vows": "~0.8.1"
   },
