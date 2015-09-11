@@ -392,7 +392,7 @@ module.exports = function(opts) {
 
       connectionPool.query( query, function( err, result ) {
         if (!error(args, err, cb)) {
-          cb( null, result);
+          cb( null, null );
         }
       });
     },
