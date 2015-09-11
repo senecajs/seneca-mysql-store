@@ -15,21 +15,17 @@ var ARRAY_TYPE = 'a';
 var DATE_TYPE = 'd';
 var SENECA_TYPE_COLUMN = 'seneca';
 
+var DEFAULT_OPTIONS = {
+  query_log_level: 'debug'
+};
 
 module.exports = function(opts) {
   var seneca = this;
 
-  opts = seneca.util.deepextend({
-    minwait: MIN_WAIT,
-    maxwait: MAX_WAIT,
-    query_log_level: 'debug'
-  },opts);
-
+  opts = seneca.util.deepextend(DEFAULT_OPTIONS, opts);
 
   var desc;
   var _connectionPool;
-
-
 
 
   var connectionPool = {
