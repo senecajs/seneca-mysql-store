@@ -189,17 +189,17 @@ module.exports = function(opts) {
     close: function(cmd, cb) {
       assert(cb);
 
-      if (_connectionPool) {
-        _connectionPool.end(function(err) {
-          if (err) {
-            seneca.fail({code: 'connection/end', store: NAME, error: err}, cb);
-          }
-          cb();
-        });
+      if (!_connectionPool) {
+        return cb();
       }
-      else {
+
+      _connectionPool.end(function(err) {
+        if (err) {
+          return seneca.fail({code: 'connection/end', store: NAME, error: err}, cb);
+        }
+
         cb();
-      }
+      });
     },
 
     /**
