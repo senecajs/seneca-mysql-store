@@ -23,15 +23,10 @@ module.exports = function(opts) {
     minwait: MIN_WAIT,
     maxwait: MAX_WAIT,
     query_log_level: 'debug'
-  },opts)
+  },opts);
 
 
   var desc;
-  var minwait;
-  var collmap = {};
-  var dbinst  = null;
-  var waitmillis = MIN_WAIT;
-  var spec;
   var _connectionPool;
 
 
@@ -93,8 +88,6 @@ module.exports = function(opts) {
 
 
 
-
-
   /**
    * check and report error conditions seneca.fail will execute the callback
    * in the case of an error. Optionally attempt reconnect to the store depending
@@ -105,24 +98,13 @@ module.exports = function(opts) {
       seneca.log(args.tag$, 'error: ' + err);
       // seneca.fail({code:'entity/error', store: NAME, error: err}, cb);
       seneca.fail('entity/error', err, cb);
-
-      // if (err.fatal) {
-      //   if ('PROTOCOL_CONNECTION_LOST' !== err.code) {
-      //     throw err;
-      //   }
-
-      //   if (MIN_WAIT === waitmillis) {
-      //     collmap = {};
-      //     reconnect();
-      //   }
-      // }
     }
     return err;
   }
 
 
   function getConnectionConfigFromString(connString) {
-      var opts = /^mysql:\/\/((.*?):(.*?)@)?(.*?)(:?(\d+))?\/(.*?)$/.exec(spec);
+      var opts = /^mysql:\/\/((.*?):(.*?)@)?(.*?)(:?(\d+))?\/(.*?)$/.exec(connString);
 
       return {
         name: opts[7],
@@ -191,37 +173,11 @@ module.exports = function(opts) {
     });
   }
 
-
-
-  // function handleDisconnect(cb) {
-  //   connection.on( 'error', function(err) {
-  //     if (!error({tag$:'init'}, err, cb) ) {
-  //       waitmillis = MIN_WAIT;
-
-  //       if (err) {
-  //         cb(err);
-  //       }
-  //       else {
-  //         seneca.log({tag$:'init'},'db open and authed');
-  //         cb(null, store);
-  //       }
-  //     }
-  //     else {
-  //       seneca.log({tag$:'init'},'db open');
-  //       cb(null, store);
-  //     }
-  //   });
-  // }
-
-
-
   /**
    * the store interface returned to seneca
    */
   var store = {
     name: NAME,
-
-
 
     /**
      * close the connection
@@ -245,8 +201,6 @@ module.exports = function(opts) {
         cb();
       }
     },
-
-
 
     /**
      * save the data as specified in the entitiy block on the arguments object
@@ -301,8 +255,6 @@ module.exports = function(opts) {
       }
     },
 
-
-
     /**
      * load first matching item based on id
      * params
@@ -328,8 +280,6 @@ module.exports = function(opts) {
         }
       });
     },
-
-
 
     /**
      * return a list of object based on the supplied query, if no query is supplied
@@ -368,8 +318,6 @@ module.exports = function(opts) {
         }
       });
     },
-
-
 
     /**
      * delete an item - fix this
@@ -436,8 +384,6 @@ var fixquery = function(qent, q) {
   return qq;
 };
 
-
-
 var whereargs = function(qent,q) {
   var w = {};
   var qok = fixquery(qent,q);
@@ -447,8 +393,6 @@ var whereargs = function(qent,q) {
   }
   return w;
 };
-
-
 
 var selectstm = function(qent, q, connection) {
   var table = tablename(qent);
@@ -469,14 +413,10 @@ var selectstm = function(qent, q, connection) {
   return "SELECT * FROM " + table + wherestr + metastr;
 };
 
-
-
 var tablename = function (entity) {
   var canon = entity.canon$({object:true});
   return (canon.base?canon.base+'_':'') + canon.name;
 };
-
-
 
 var makeentp = function(ent) {
   var entp = {};
@@ -504,8 +444,6 @@ var makeentp = function(ent) {
   }
   return entp;
 };
-
-
 
 var makeent = function(ent,row) {
   if (!row)
@@ -540,8 +478,6 @@ var makeent = function(ent,row) {
   return ent.make$(entp);
 };
 
-
-
 var metaquery = function(qent,q) {
   var mq = [];
 
@@ -561,8 +497,6 @@ var metaquery = function(qent,q) {
 
   return mq;
 };
-
-
 
 function makequeryfunc(qent, q, connection) {
   var qf;
@@ -599,8 +533,6 @@ function makequeryfunc(qent, q, connection) {
 
   return qf;
 }
-
-
 
 var deletestm = function(qent, q, connection) {
   var table = tablename(qent);
