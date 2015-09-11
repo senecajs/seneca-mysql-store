@@ -93,13 +93,8 @@ module.exports = function(opts) {
    * in the case of an error. Optionally attempt reconnect to the store depending
    * on error condition
    */
-  function error(args, err, cb) {
-    if (err) {
-      seneca.log(args.tag$, 'error: ' + err);
-      // seneca.fail({code:'entity/error', store: NAME, error: err}, cb);
-      seneca.fail('entity/error', err, cb);
-    }
-    return err;
+  function fail(err) {
+    return seneca.fail('entity/error', err);
   }
 
 
@@ -158,13 +153,13 @@ module.exports = function(opts) {
     testConnection(function (err) {
 
       if (err) {
-        return seneca.fail({
+        return done(seneca.fail({
           code: 'entity/configure',
           store: NAME,
           error: err,
           desc: desc,
           tag$: 'init'
-        }, done);
+        }));
       }
 
       seneca.log({tag$: 'init'},'db open and authed for '+ conn.username);
@@ -195,7 +190,7 @@ module.exports = function(opts) {
 
       _connectionPool.end(function(err) {
         if (err) {
-          return seneca.fail({code: 'connection/end', store: NAME, error: err}, cb);
+          cb(seneca.fail({code: 'connection/end', store: NAME, error: err}));
         }
 
         cb();
@@ -233,24 +228,32 @@ module.exports = function(opts) {
       if (update) {
         query = 'UPDATE ' + tablename(ent) + ' SET ? WHERE id=\'' + entp.id + '\'';
         connectionPool.query(query, entp, function(err, result) {
-          if (!error(args, err, cb)) {
-            seneca.log(args.tag$,'save/update', result);
-            cb(null, ent);
+
+          if (err) {
+            return cb(fail(err));
           }
+
+          seneca.log(args.tag$,'save/update', result, query);
+          cb(null, ent);
+
         });
       }
       else {
         query = 'INSERT INTO ' + tablename(ent) + ' SET ?';
         connectionPool.query( query, entp, function( err, result ) {
-          if (!error(args, err, cb)) {
-            seneca.log(args.tag$, 'save/insert', result, query);
 
-            if(opts.auto_increment && result.insertId) {
-              ent.id = result.insertId;
-            }
-
-            cb(null, ent);
+          if (err) {
+            return cb(fail(err));
           }
+
+          seneca.log(args.tag$, 'save/insert', result, query);
+
+          if(opts.auto_increment && result.insertId) {
+            ent.id = result.insertId;
+          }
+
+          cb(null, ent);
+
         });
       }
     },
@@ -273,11 +276,15 @@ module.exports = function(opts) {
 
       var query= selectstm(qent, q, connectionPool);
       connectionPool.query(query, function(err, res, fields){
-        if (!error(args, err, cb)) {
-          var ent = makeent( qent, res[0] );
-          seneca.log(args.tag$, 'load', ent);
-          cb(null, ent);
+
+        if (err) {
+          return cb(fail(err));
         }
+
+        var ent = makeent( qent, res[0] );
+        seneca.log(args.tag$, 'load', ent);
+        cb(null, ent);
+
       });
     },
 
@@ -308,14 +315,18 @@ module.exports = function(opts) {
       var queryfunc = makequeryfunc(qent, q, connectionPool);
 
       queryfunc(function(err, results) {
-        if (!error(args, err, cb)) {
-          var list = [];
-          results.forEach( function(row){
-            var ent = makeent(qent, row);
-            list.push(ent);
-          });
-          cb(null, list);
+
+        if (err) {
+          return cb(fail(err));
         }
+
+        var list = [];
+        results.forEach( function(row){
+          var ent = makeent(qent, row);
+          list.push(ent);
+        });
+
+        cb(null, list);
       });
     },
 
@@ -338,9 +349,12 @@ module.exports = function(opts) {
       var query = deletestm(qent, q, connectionPool);
 
       connectionPool.query( query, function( err, result ) {
-        if (!error(args, err, cb)) {
-          cb( null, null );
+
+        if (err) {
+          return cb(fail(err));
         }
+
+        cb( null, null );
       });
     },
 
