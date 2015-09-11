@@ -320,10 +320,8 @@ module.exports = function(opts) {
           return cb(fail(err));
         }
 
-        var list = [];
-        results.forEach( function(row){
-          var ent = makeent(qent, row);
-          list.push(ent);
+        var list = _.map(results, function(row) {
+          return makeent(qent, row);
         });
 
         cb(null, list);
@@ -437,7 +435,7 @@ var makeentp = function(ent) {
   var fields = ent.fields$();
   var type = {};
 
-  fields.forEach(function(field){
+  _.forEach(fields, function(field){
     if (_.isArray( ent[field])) {
       type[field] = ARRAY_TYPE;
     }
@@ -472,7 +470,7 @@ var makeent = function(ent,row) {
 
   if( !_.isUndefined(ent) && !_.isUndefined(row) ) {
     entp = {};
-    fields.forEach(function(field){
+    _.forEach(fields, function(field){
       if (SENECA_TYPE_COLUMN != field){
         if( _.isUndefined( senecatype[field]) ) {
           entp[field] = row[field];
