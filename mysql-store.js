@@ -121,74 +121,73 @@ module.exports = function(opts) {
   }
 
 
+  function getConnectionConfigFromString(connString) {
+      var opts = /^mysql:\/\/((.*?):(.*?)@)?(.*?)(:?(\d+))?\/(.*?)$/.exec(spec);
 
-  function reconnect(){
-    configure(spec, function(err, me) {
+      return {
+        name: opts[7],
+        port: opts[6] ? parseInt(opts[6], 10) : null,
+        server: opts[4],
+        username: opts[2],
+        password: opts[3]
+      };
+  }
+
+  function getConnectionConfig(params) {
+
+    if (_.isString(params)) {
+      return getConnectionConfigFromString(params);
+    }
+
+    return {
+      connectionLimit: params.poolSize || 5,
+      host: params.host,
+      user: params.user || params.username,
+      password: params.password,
+      database: params.name
+    };
+  }
+
+  function testConnection (cb) {
+    _connectionPool.getConnection(function (err, conn) {
+
       if (err) {
-        seneca.log(null, 'db reconnect (wait ' + waitmillis + 'ms) failed: ' + err);
-        waitmillis = Math.min(2 * waitmillis, MAX_WAIT);
-        setTimeout(function() {reconnect();}, waitmillis);
+        return cb(err);
       }
-      else {
-        waitmillis = MIN_WAIT;
-        seneca.log(null,'reconnect ok');
-      }
+
+      conn.release();
+      cb(null);
+
     });
   }
 
 
   /**
-   * configure the store - create a new store specific connection object
-   *
-   * params:
-   * spec - store specific configuration
-   * cb - callback
-   */
-  function configure(specification, cb) {
+   * setup the connection pool and try to obtain a connection
+  **/
+  function setup(specification, done) {
     assert(specification);
-    assert(cb);
-    spec = specification;
+    assert(done);
 
-    var conf = 'string' == typeof(spec) ? null : spec;
-    if (!conf) {
-      conf = {};
-      var urlM = /^mysql:\/\/((.*?):(.*?)@)?(.*?)(:?(\d+))?\/(.*?)$/.exec(spec);
-      conf.name   = urlM[7];
-      conf.port   = urlM[6];
-      conf.server = urlM[4];
-      conf.username = urlM[2];
-      conf.password = urlM[3];
-      conf.port = conf.port ? parseInt(conf.port,10) : null;
-    }
+    var conn = getConnectionConfig(specification);
 
-    var defaultConn = {
-      connectionLimit: conf.poolSize || 5,
-      host: conf.host,
-      user: conf.user || conf.username,
-      password: conf.password,
-      database: conf.name
-    };
-    var conn = conf.conn || defaultConn;
     _connectionPool = mysql.createPool(conn);
 
-    // handleDisconnect();
-    _connectionPool.getConnection(function(err, conn) {
-      if (!error({tag$:'init'},err,cb)) {
-        waitmillis = MIN_WAIT;
-        if (err) {
-          cb(err);
-        }
-        else {
-          seneca.log({tag$:'init'},'db open and authed for '+conf.username);
-          conn.release();
-          cb(null, store);
-        }
+    testConnection(function (err) {
+
+      if (err) {
+        return seneca.fail({
+          code: 'entity/configure',
+          store: NAME,
+          error: err,
+          desc: desc,
+          tag$: 'init'
+        }, done);
       }
-      else {
-        seneca.log({tag$:'init'},'db open');
-        conn.release();
-        cb(null, store);
-      }
+
+      seneca.log({tag$: 'init'},'db open and authed for '+ conn.username);
+      done(null);
+
     });
   }
 
@@ -418,13 +417,8 @@ module.exports = function(opts) {
    */
   var meta = seneca.store.init(seneca, opts, store);
   desc = meta.desc;
-  seneca.add({init:store.name,tag:meta.tag}, function(args,done) {
-    configure(opts, function(err) {
-      if (err) {
-        return seneca.fail({code:'entity/configure', store:store.name, error:err, desc:desc}, done);
-      }
-      else done();
-    });
+  seneca.add({ init: store.name, tag: meta.tag }, function(args,done) {
+    setup(opts, done);
   });
 
   return { name:store.name, tag:meta.tag };
