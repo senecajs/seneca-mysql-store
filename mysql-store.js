@@ -8,8 +8,6 @@ var mysql = require('mysql');
 var uuid = require('node-uuid');
 
 var NAME = "mysql-store";
-var MIN_WAIT = 16;
-var MAX_WAIT = 65336;
 var OBJECT_TYPE = 'o';
 var ARRAY_TYPE = 'a';
 var DATE_TYPE = 'd';
