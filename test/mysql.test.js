@@ -45,19 +45,25 @@ si.__testcount = 0;
 var testcount = 0;
 
 describe('mysql', function () {
-  it('basic', function (done) {
-    testcount++;
-    shared.basictest(si, done);
+
+  shared.basictest({
+    seneca: si,
+    script: lab
   });
 
-  it('sort', function(done){
-    testcount++;
-    shared.sorttest(si,done);
+  shared.sorttest({
+    seneca: si,
+    script: lab
   });
 
-  it('limits', function(done){
-    testcount++;
-    shared.limitstest(si,done);
+  shared.limitstest({
+    seneca: si,
+    script: lab
+  });
+
+  shared.sqltest({
+    seneca: si,
+    script: lab
   });
 
   it('extra', function (done) {
@@ -65,8 +71,5 @@ describe('mysql', function () {
     extra.test(si, done);
   });
 
-  it('close', function (done) {
-    shared.closetest(si, testcount, done);
-  });
 });
 
