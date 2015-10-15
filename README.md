@@ -1,15 +1,27 @@
-# seneca-mysql-store
-
+![Seneca](http://senecajs.org/files/assets/seneca-logo.png)
 > A [Seneca.js][] data storage plugin
 
-[![travis][travis-badge]][travis-url]
-[![npm][npm-badge]][npm-url]
+# seneca-mysql-store
+[![Build Status][travis-badge]][travis-url]
+[![Gitter][gitter-badge]][gitter-url]
 
-This module is a plugin for [Seneca.js][]. It provides a storage engine that uses
-MySql to persist data and is ready for production use. It may also be used as
-an example on how to implement a storage plugin for Seneca.
+[![js-standard-style][standard-badge]][standard-style]
 
-For a gentle introduction to Seneca itself, see the [senecajs.org][seneca.js] site.
+A storage engine that uses [mySql][] to persist data. It may also be used as an example on how to
+implement a storage plugin for Seneca using an underlying relational store.
+
+- __Version:__ 0.4.0
+- __Tested on:__ Seneca 0.5.0
+- __Node:__ 0.10, 0.11
+
+If you're using this module, and need help, you can:
+
+- Post a [github issue][],
+- Tweet to [@senecajs][],
+- Ask on the [Gitter][gitter-url].
+
+If you are new to Seneca in general, please take a look at [senecajs.org][]. We have everything from
+tutorials to sample apps to help get you up and running quickly.
 
 ## Install
 To install, simply use npm. Remember you will need to install [Seneca.js][]
@@ -91,11 +103,18 @@ examples, extra testing, or new features please get in touch.
 ## License
 Copyright Mircea Alexandru 2015, Licensed under [MIT][].
 
-[travis-badge]: https://img.shields.io/travis/mirceaalexandru/seneca-mysql-store.svg?style=flat-square
+[travis-badge]: https://travis-ci.org/mirceaalexandru/seneca-mysql-store.svg
 [travis-url]: https://travis-ci.org/mirceaalexandru/seneca-mysql-store
-[npm-badge]: https://img.shields.io/npm/v/seneca-mysql-store.svg?style=flat-square
-[npm-url]: https://npmjs.org/package/seneca-mysql-store
+[gitter-badge]: https://badges.gitter.im/Join%20Chat.svg
+[gitter-url]: https://gitter.im/senecajs/seneca
+[standard-badge]: https://raw.githubusercontent.com/feross/standard/master/badge.png
+[standard-style]: https://github.com/feross/standard
 
 [MIT]: ./LICENSE
-[Seneca.js]: https://www.npmjs.com/package/seneca
+[mySql]: https://www.mysql.com/
 [node-mysqldb-native]: http://mysqldb.github.com/node-mysqldb-native/markdown-docs/queries.html
+[Senecajs org]: https://github.com/senecajs/
+[Seneca.js]: https://www.npmjs.com/package/seneca
+[senecajs.org]: http://senecajs.org/
+[github issue]: https://github.com/mirceaalexandru/seneca-mysql-store/issues
+[@senecajs]: http://twitter.com/senecajs
