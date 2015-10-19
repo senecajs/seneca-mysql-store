@@ -178,7 +178,7 @@ module.exports = function(opts) {
 
     _connectionPool.end(function(err) {
       if (err) {
-        cb(seneca.fail({code: 'connection/end', store: NAME, error: err}));
+        return cb(seneca.fail({code: 'connection/end', store: NAME, error: err}));
       }
 
       cb();
