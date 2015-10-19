@@ -154,6 +154,10 @@ module.exports = function(opts) {
     return _connectionPool.escape.apply(_connectionPool, arguments);
   }
 
+  function poolEscapeId() {
+    return _connectionPool.escapeId.apply(_connectionPool, arguments);
+  }
+
   function poolFormat() {
     return mysql.format.apply(mysql, arguments);
   }
@@ -354,6 +358,7 @@ module.exports = function(opts) {
   var connectionPool = {
     query: poolQuery,
     escape: poolEscape,
+    escapeId: poolEscapeId,
     format: poolFormat
   };
 
@@ -414,7 +419,7 @@ var selectstm = function(qent, q, connection) {
 
   if( !_.isEmpty(w) ) {
     for(var param in w) {
-      params.push(param + ' = ' + connection.escape(w[param]));
+      params.push(connection.escapeId(param) + ' = ' + connection.escape(w[param]));
     }
     wherestr = " WHERE "+params.join(' AND ');
   }
