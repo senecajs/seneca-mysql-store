@@ -9,11 +9,8 @@
 "use strict";
 
 var _ = require('lodash');
-var assert = require('assert');
 var seneca = require('seneca');
-var async = require('async');
 var shared = require('seneca-store-test');
-var si = seneca();
 var extra = require('./mysql.ext.test.js');
 var fs = require('fs');
 
@@ -30,44 +27,43 @@ if(fs.existsSync(__dirname + '/../test/dbconfig.mine.js')) {
   dbConfig = require('./dbconfig.example');
 }
 
-console.log(dbConfig);
 
-var incrementConfig = _.assign(
-    {
-      map: { '-/-/incremental': '*' },
-      auto_increment: true
-    }, dbConfig);
+var incrementConfig = _.assign({
+  map: { '-/-/incremental': '*' },
+  auto_increment: true
+}, dbConfig);
 
+var si = seneca();
 si.use(require('..'), dbConfig);
-
 si.use(require('..'), incrementConfig);
 
-si.__testcount = 0;
-var testcount = 0;
 
-describe('mysql', function () {
-  it('basic', function (done) {
-    testcount++;
-    shared.basictest(si, done);
+describe('Mysql', function () {
+
+  shared.basictest({
+    seneca: si,
+    script: lab
   });
 
-  it('sort', function(done){
-    testcount++;
-    shared.sorttest(si,done);
+  shared.sorttest({
+    seneca: si,
+    script: lab
   });
 
-  it('limits', function(done){
-    testcount++;
-    shared.limitstest(si,done);
+  shared.limitstest({
+    seneca: si,
+    script: lab
   });
 
-  it('extra', function (done) {
-    testcount++;
-    extra.test(si, done);
+  shared.sqltest({
+    seneca: si,
+    script: lab
   });
 
-  it('close', function (done) {
-    shared.closetest(si, testcount, done);
+  extra.test({
+    seneca: si,
+    script: lab
   });
+
 });
 

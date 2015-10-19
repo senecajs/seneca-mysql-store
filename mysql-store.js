@@ -8,91 +8,49 @@ var mysql = require('mysql');
 var uuid = require('node-uuid');
 
 var NAME = "mysql-store";
-var MIN_WAIT = 16;
-var MAX_WAIT = 65336;
 var OBJECT_TYPE = 'o';
 var ARRAY_TYPE = 'a';
 var DATE_TYPE = 'd';
 var SENECA_TYPE_COLUMN = 'seneca';
 
+var DEFAULT_OPTIONS = {
+  query_log_level: 'debug'
+};
+
+function getConnectionConfigFromString(connString) {
+    var opts = /^mysql:\/\/((.*?):(.*?)@)?(.*?)(:?(\d+))?\/(.*?)$/.exec(connString);
+
+    return {
+      name: opts[7],
+      port: opts[6] ? parseInt(opts[6], 10) : null,
+      server: opts[4],
+      username: opts[2],
+      password: opts[3]
+    };
+}
+
+function getConnectionConfig(params) {
+
+  if (_.isString(params)) {
+    return getConnectionConfigFromString(params);
+  }
+
+  return {
+    connectionLimit: params.poolSize || 5,
+    host: params.host,
+    user: params.user || params.username,
+    password: params.password,
+    database: params.name
+  };
+}
 
 module.exports = function(opts) {
   var seneca = this;
 
-  opts = seneca.util.deepextend({
-    minwait: MIN_WAIT,
-    maxwait: MAX_WAIT,
-    query_log_level: 'debug'
-  },opts)
-
+  opts = seneca.util.deepextend(DEFAULT_OPTIONS, opts);
 
   var desc;
-  var minwait;
-  var collmap = {};
-  var dbinst  = null;
-  var waitmillis = MIN_WAIT;
-  var spec;
   var _connectionPool;
-
-
-
-
-  var connectionPool = {
-    query: function(query, inputs, cb) {
-      var startDate = new Date();
-
-      function report(err) {
-        var log = {
-          query: query,
-          inputs: inputs,
-          time: (new Date()) - startDate
-        };
-
-        if (log.time > 100) {
-          log.tag = 'SLOW';
-        }
-
-        if (log.time > 300) {
-          log.tag = 'SLOWER';
-        }
-
-        if (log.time > 500) {
-          log.tag = 'SLOWEST';
-        }
-
-
-        if (err) {
-          log.err = err;
-        }
-
-        seneca.log(opts.query_log_level,'mysql',log);
-
-        return cb.apply(this, arguments);
-      }
-
-      if (cb === undefined) {
-        cb = inputs;
-        inputs = undefined;
-      }
-
-      if (inputs === undefined) {
-        return _connectionPool.query.call(_connectionPool, query, report);
-      }
-      else {
-        return _connectionPool.query.call(_connectionPool, query, inputs, report);
-      }
-
-    },
-    escape: function() {
-      return _connectionPool.escape.apply(_connectionPool, arguments);
-    },
-    format: function() {
-      return mysql.format.apply(mysql, arguments);
-    }
-  };
-
-
-
 
 
   /**
@@ -100,315 +58,318 @@ module.exports = function(opts) {
    * in the case of an error. Optionally attempt reconnect to the store depending
    * on error condition
    */
-  function error(args, err, cb) {
-    if (err) {
-      seneca.log(args.tag$, 'error: ' + err);
-      // seneca.fail({code:'entity/error', store: NAME, error: err}, cb);
-      seneca.fail('entity/error', err, cb);
-
-      // if (err.fatal) {
-      //   if ('PROTOCOL_CONNECTION_LOST' !== err.code) {
-      //     throw err;
-      //   }
-
-      //   if (MIN_WAIT === waitmillis) {
-      //     collmap = {};
-      //     reconnect();
-      //   }
-      // }
-    }
-    return err;
+  function fail(err) {
+    return seneca.fail('entity/error', err);
   }
 
+  function testConnection (cb) {
+    _connectionPool.getConnection(function (err, conn) {
 
-
-  function reconnect(){
-    configure(spec, function(err, me) {
       if (err) {
-        seneca.log(null, 'db reconnect (wait ' + waitmillis + 'ms) failed: ' + err);
-        waitmillis = Math.min(2 * waitmillis, MAX_WAIT);
-        setTimeout(function() {reconnect();}, waitmillis);
+        return cb(err);
       }
-      else {
-        waitmillis = MIN_WAIT;
-        seneca.log(null,'reconnect ok');
-      }
+
+      conn.release();
+      cb(null);
+
     });
   }
 
-
   /**
-   * configure the store - create a new store specific connection object
-   *
-   * params:
-   * spec - store specific configuration
-   * cb - callback
-   */
-  function configure(specification, cb) {
+   * setup the connection pool and try to obtain a connection
+  **/
+  function setup(specification, done) {
     assert(specification);
-    assert(cb);
-    spec = specification;
+    assert(done);
 
-    var conf = 'string' == typeof(spec) ? null : spec;
-    if (!conf) {
-      conf = {};
-      var urlM = /^mysql:\/\/((.*?):(.*?)@)?(.*?)(:?(\d+))?\/(.*?)$/.exec(spec);
-      conf.name   = urlM[7];
-      conf.port   = urlM[6];
-      conf.server = urlM[4];
-      conf.username = urlM[2];
-      conf.password = urlM[3];
-      conf.port = conf.port ? parseInt(conf.port,10) : null;
-    }
+    var conn = getConnectionConfig(specification);
 
-    var defaultConn = {
-      connectionLimit: conf.poolSize || 5,
-      host: conf.host,
-      user: conf.user || conf.username,
-      password: conf.password,
-      database: conf.name
-    };
-    var conn = conf.conn || defaultConn;
     _connectionPool = mysql.createPool(conn);
 
-    // handleDisconnect();
-    _connectionPool.getConnection(function(err, conn) {
-      if (!error({tag$:'init'},err,cb)) {
-        waitmillis = MIN_WAIT;
-        if (err) {
-          cb(err);
-        }
-        else {
-          seneca.log({tag$:'init'},'db open and authed for '+conf.username);
-          conn.release();
-          cb(null, store);
-        }
+    testConnection(function (err) {
+
+      if (err) {
+        return done(seneca.fail({
+          code: 'entity/configure',
+          store: NAME,
+          error: err,
+          desc: desc,
+          tag$: 'init'
+        }));
       }
-      else {
-        seneca.log({tag$:'init'},'db open');
-        conn.release();
-        cb(null, store);
-      }
+
+      seneca.log({tag$: 'init'},'db open and authed for '+ conn.username);
+      done(null);
+
     });
   }
 
 
+  function poolQuery(query, inputs, cb) {
+    var startDate = new Date();
 
-  // function handleDisconnect(cb) {
-  //   connection.on( 'error', function(err) {
-  //     if (!error({tag$:'init'}, err, cb) ) {
-  //       waitmillis = MIN_WAIT;
+    function report(err) {
+      var log = {
+        query: query,
+        inputs: inputs,
+        time: (new Date()) - startDate
+      };
 
-  //       if (err) {
-  //         cb(err);
-  //       }
-  //       else {
-  //         seneca.log({tag$:'init'},'db open and authed');
-  //         cb(null, store);
-  //       }
-  //     }
-  //     else {
-  //       seneca.log({tag$:'init'},'db open');
-  //       cb(null, store);
-  //     }
-  //   });
-  // }
+      if (log.time > 100) {
+        log.tag = 'SLOW';
+      }
+
+      if (log.time > 300) {
+        log.tag = 'SLOWER';
+      }
+
+      if (log.time > 500) {
+        log.tag = 'SLOWEST';
+      }
 
 
+      if (err) {
+        log.err = err;
+      }
+
+      seneca.log(opts.query_log_level,'mysql',log);
+
+      return cb.apply(this, arguments);
+    }
+
+    if (cb === undefined) {
+      cb = inputs;
+      inputs = undefined;
+    }
+
+    if (inputs === undefined) {
+      return _connectionPool.query.call(_connectionPool, query, report);
+    }
+    else {
+      return _connectionPool.query.call(_connectionPool, query, inputs, report);
+    }
+  }
+
+  function poolEscape() {
+    return _connectionPool.escape.apply(_connectionPool, arguments);
+  }
+
+  function poolEscapeId() {
+    return _connectionPool.escapeId.apply(_connectionPool, arguments);
+  }
+
+  function poolFormat() {
+    return mysql.format.apply(mysql, arguments);
+  }
 
   /**
-   * the store interface returned to seneca
+   * close the connection
+   *
+   * params
+   * cmd - optional close command parameters
+   * cb - callback
    */
+  function storeClose(cmd, cb) {
+    assert(cb);
+
+    if (!_connectionPool) {
+      return cb();
+    }
+
+    _connectionPool.end(function(err) {
+      if (err) {
+        return cb(seneca.fail({code: 'connection/end', store: NAME, error: err}));
+      }
+
+      cb();
+    });
+  }
+
+  /**
+   * save the data as specified in the entitiy block on the arguments object
+   *
+   * params
+   * args - of the form { ent: { id: , ..entitiy data..} }
+   * cb - callback
+   */
+  function storeSave(args, cb) {
+    assert(args);
+    assert(cb);
+    assert(args.ent);
+
+    var ent = args.ent;
+    var update = !!ent.id;
+    var query;
+
+    if (!ent.id) {
+      if (ent.id$) {
+        ent.id = ent.id$;
+      } else {
+        if (!opts.auto_increment) {
+          ent.id = uuid();
+        }
+      }
+    }
+    var fields = ent.fields$();
+    var entp = makeentp(ent);
+
+    if (update) {
+      query = 'UPDATE ' + tablename(ent) + ' SET ? WHERE id=\'' + entp.id + '\'';
+      connectionPool.query(query, entp, function(err, result) {
+
+        if (err) {
+          return cb(fail(err));
+        }
+
+        seneca.log(args.tag$,'save/update', result, query);
+        cb(null, ent);
+
+      });
+    }
+    else {
+      query = 'INSERT INTO ' + tablename(ent) + ' SET ?';
+      connectionPool.query( query, entp, function( err, result ) {
+
+        if (err) {
+          return cb(fail(err));
+        }
+
+        seneca.log(args.tag$, 'save/insert', result, query);
+
+        if(opts.auto_increment && result.insertId) {
+          ent.id = result.insertId;
+        }
+
+        cb(null, ent);
+
+      });
+    }
+  }
+
+  /**
+   * load first matching item based on id
+   * params
+   * args - of the form { ent: { id: , ..entitiy data..} }
+   * cb - callback
+   */
+  function storeLoad(args, cb) {
+    assert(args);
+    assert(cb);
+    assert(args.qent);
+    assert(args.q);
+
+    var q = _.clone(args.q);
+    var qent = args.qent;
+    q.limit$ = 1;
+
+    var query= selectstm(qent, q, connectionPool);
+    connectionPool.query(query, function(err, res, fields){
+
+      if (err) {
+        return cb(fail(err));
+      }
+
+      var ent = makeent( qent, res[0] );
+      seneca.log(args.tag$, 'load', ent);
+      cb(null, ent);
+
+    });
+  }
+
+  /**
+   * return a list of object based on the supplied query, if no query is supplied
+   * then 'select * from ...'
+   *
+   * Notes: trivial implementation and unlikely to perform well due to list copy
+   *        also only takes the first page of results from simple DB should in fact
+   *        follow paging model
+   *
+   * params
+   * args - of the form { ent: { id: , ..entitiy data..} }
+   * cb - callback
+   * a=1, b=2 simple
+   * next paging is optional in simpledb
+   * limit$ ->
+   * use native$
+   */
+  function storeList(args, cb) {
+    assert(args);
+    assert(cb);
+    assert(args.qent);
+    assert(args.q);
+
+    var qent = args.qent;
+    var q = args.q;
+    var queryfunc = makequeryfunc(qent, q, connectionPool);
+
+    queryfunc(function(err, results) {
+
+      if (err) {
+        return cb(fail(err));
+      }
+
+      var list = _.map(results, function(row) {
+        return makeent(qent, row);
+      });
+
+      cb(null, list);
+    });
+  }
+
+  /**
+   * delete an item - fix this
+   *
+   * params
+   * args - of the form { ent: { id: , ..entitiy data..} }
+   * cb - callback
+   * { 'all$': true }
+   */
+  function storeRemove(args, cb) {
+    assert(args);
+    assert(cb);
+    assert(args.qent);
+    assert(args.q);
+
+    var qent = args.qent;
+    var q = args.q;
+    var query = deletestm(qent, q, connectionPool);
+
+    connectionPool.query( query, function( err, result ) {
+
+      if (err) {
+        return cb(fail(err));
+      }
+
+      cb( null, null );
+    });
+  }
+
+  /**
+   * return the underlying native connection object
+   */
+  function storeNative(args, cb) {
+    assert(args);
+    assert(cb);
+    assert(args.ent);
+
+    cb(null, connectionPool);
+  }
+
+  var connectionPool = {
+    query: poolQuery,
+    escape: poolEscape,
+    escapeId: poolEscapeId,
+    format: poolFormat
+  };
+
   var store = {
     name: NAME,
-
-
-
-    /**
-     * close the connection
-     *
-     * params
-     * cmd - optional close command parameters
-     * cb - callback
-     */
-    close: function(cmd, cb) {
-      assert(cb);
-
-      if (_connectionPool) {
-        _connectionPool.end(function(err) {
-          if (err) {
-            seneca.fail({code: 'connection/end', store: NAME, error: err}, cb);
-          }
-          cb();
-        });
-      }
-      else {
-        cb();
-      }
-    },
-
-
-
-    /**
-     * save the data as specified in the entitiy block on the arguments object
-     *
-     * params
-     * args - of the form { ent: { id: , ..entitiy data..} }
-     * cb - callback
-     */
-    save: function(args, cb) {
-      assert(args);
-      assert(cb);
-      assert(args.ent);
-
-      var ent = args.ent;
-      var update = !!ent.id;
-      var query;
-
-      if (!ent.id) {
-        if (ent.id$) {
-          ent.id = ent.id$;
-        } else {
-          if (!opts.auto_increment) {
-            ent.id = uuid();
-          }
-        }
-      }
-      var fields = ent.fields$();
-      var entp = makeentp(ent);
-
-      if (update) {
-        query = 'UPDATE ' + tablename(ent) + ' SET ? WHERE id=\'' + entp.id + '\'';
-        connectionPool.query(query, entp, function(err, result) {
-          if (!error(args, err, cb)) {
-            seneca.log(args.tag$,'save/update', result);
-            cb(null, ent);
-          }
-        });
-      }
-      else {
-        query = 'INSERT INTO ' + tablename(ent) + ' SET ?';
-        connectionPool.query( query, entp, function( err, result ) {
-          if (!error(args, err, cb)) {
-            seneca.log(args.tag$, 'save/insert', result, query);
-
-            if(opts.auto_increment && result.insertId) {
-              ent.id = result.insertId;
-            }
-
-            cb(null, ent);
-          }
-        });
-      }
-    },
-
-
-
-    /**
-     * load first matching item based on id
-     * params
-     * args - of the form { ent: { id: , ..entitiy data..} }
-     * cb - callback
-     */
-    load: function(args, cb) {
-      assert(args);
-      assert(cb);
-      assert(args.qent);
-      assert(args.q);
-
-      var q = _.clone(args.q);
-      var qent = args.qent;
-      q.limit$ = 1;
-
-      var query= selectstm(qent, q, connectionPool);
-      connectionPool.query(query, function(err, res, fields){
-        if (!error(args, err, cb)) {
-          var ent = makeent( qent, res[0] );
-          seneca.log(args.tag$, 'load', ent);
-          cb(null, ent);
-        }
-      });
-    },
-
-
-
-    /**
-     * return a list of object based on the supplied query, if no query is supplied
-     * then 'select * from ...'
-     *
-     * Notes: trivial implementation and unlikely to perform well due to list copy
-     *        also only takes the first page of results from simple DB should in fact
-     *        follow paging model
-     *
-     * params
-     * args - of the form { ent: { id: , ..entitiy data..} }
-     * cb - callback
-     * a=1, b=2 simple
-     * next paging is optional in simpledb
-     * limit$ ->
-     * use native$
-     */
-    list: function(args, cb) {
-      assert(args);
-      assert(cb);
-      assert(args.qent);
-      assert(args.q);
-
-      var qent = args.qent;
-      var q = args.q;
-      var queryfunc = makequeryfunc(qent, q, connectionPool);
-
-      queryfunc(function(err, results) {
-        if (!error(args, err, cb)) {
-          var list = [];
-          results.forEach( function(row){
-            var ent = makeent(qent, row);
-            list.push(ent);
-          });
-          cb(null, list);
-        }
-      });
-    },
-
-
-
-    /**
-     * delete an item - fix this
-     *
-     * params
-     * args - of the form { ent: { id: , ..entitiy data..} }
-     * cb - callback
-     * { 'all$': true }
-     */
-    remove: function(args, cb) {
-      assert(args);
-      assert(cb);
-      assert(args.qent);
-      assert(args.q);
-
-      var qent = args.qent;
-      var q = args.q;
-      var query = deletestm(qent, q, connectionPool);
-
-      connectionPool.query( query, function( err, result ) {
-        if (!error(args, err, cb)) {
-          cb( null, result);
-        }
-      });
-    },
-
-
-
-    /**
-     * return the underlying native connection object
-     */
-    native: function(args, cb) {
-      assert(args);
-      assert(cb);
-      assert(args.ent);
-
-      cb(null, connectionPool);
-    }
+    close: storeClose,
+    save: storeSave,
+    load: storeLoad,
+    list: storeList,
+    remove: storeRemove,
+    native: storeNative
   };
 
 
@@ -418,16 +379,14 @@ module.exports = function(opts) {
    */
   var meta = seneca.store.init(seneca, opts, store);
   desc = meta.desc;
-  seneca.add({init:store.name,tag:meta.tag}, function(args,done) {
-    configure(opts, function(err) {
-      if (err) {
-        return seneca.fail({code:'entity/configure', store:store.name, error:err, desc:desc}, done);
-      }
-      else done();
-    });
+  seneca.add({ init: store.name, tag: meta.tag }, function(args,done) {
+    setup(opts, done);
   });
 
-  return { name:store.name, tag:meta.tag };
+  return {
+    name: store.name,
+    tag:meta.tag
+  };
 };
 
 
@@ -442,8 +401,6 @@ var fixquery = function(qent, q) {
   return qq;
 };
 
-
-
 var whereargs = function(qent,q) {
   var w = {};
   var qok = fixquery(qent,q);
@@ -454,8 +411,6 @@ var whereargs = function(qent,q) {
   return w;
 };
 
-
-
 var selectstm = function(qent, q, connection) {
   var table = tablename(qent);
   var params = [];
@@ -464,7 +419,7 @@ var selectstm = function(qent, q, connection) {
 
   if( !_.isEmpty(w) ) {
     for(var param in w) {
-      params.push(param + ' = ' + connection.escape(w[param]));
+      params.push(connection.escapeId(param) + ' = ' + connection.escape(w[param]));
     }
     wherestr = " WHERE "+params.join(' AND ');
   }
@@ -475,21 +430,17 @@ var selectstm = function(qent, q, connection) {
   return "SELECT * FROM " + table + wherestr + metastr;
 };
 
-
-
 var tablename = function (entity) {
   var canon = entity.canon$({object:true});
   return (canon.base?canon.base+'_':'') + canon.name;
 };
-
-
 
 var makeentp = function(ent) {
   var entp = {};
   var fields = ent.fields$();
   var type = {};
 
-  fields.forEach(function(field){
+  _.forEach(fields, function(field){
     if (_.isArray( ent[field])) {
       type[field] = ARRAY_TYPE;
     }
@@ -511,8 +462,6 @@ var makeentp = function(ent) {
   return entp;
 };
 
-
-
 var makeent = function(ent,row) {
   if (!row)
     return null;
@@ -526,7 +475,7 @@ var makeent = function(ent,row) {
 
   if( !_.isUndefined(ent) && !_.isUndefined(row) ) {
     entp = {};
-    fields.forEach(function(field){
+    _.forEach(fields, function(field){
       if (SENECA_TYPE_COLUMN != field){
         if( _.isUndefined( senecatype[field]) ) {
           entp[field] = row[field];
@@ -545,8 +494,6 @@ var makeent = function(ent,row) {
   }
   return ent.make$(entp);
 };
-
-
 
 var metaquery = function(qent,q) {
   var mq = [];
@@ -567,8 +514,6 @@ var metaquery = function(qent,q) {
 
   return mq;
 };
-
-
 
 function makequeryfunc(qent, q, connection) {
   var qf;
@@ -605,8 +550,6 @@ function makequeryfunc(qent, q, connection) {
 
   return qf;
 }
-
-
 
 var deletestm = function(qent, q, connection) {
   var table = tablename(qent);
