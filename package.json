@@ -29,6 +29,7 @@
     "Richard Rodger (http://richardrodger.com/)"
   ],
   "dependencies": {
+    "eraro": "^0.4.1",
     "lodash": "~3.10.0",
     "mysql": "~2.9.0",
     "node-uuid": "~1.4.3"

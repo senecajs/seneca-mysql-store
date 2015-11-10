@@ -20,11 +20,12 @@ var SENECA_TYPE_COLUMN = 'seneca';
 module.exports = function ( options ) {
   var seneca = this;
 
+  var opts = seneca.util.deepextend( defaultConfig, options )
   // Declare internals
   var internals = {
     name:       'mysql-store',
-    opts:       seneca.util.deepextend( defaultConfig, options ),
-    waitmillis: internals.opts.minwait,
+    opts:       opts,
+    waitmillis: opts.minwait,
     desc:       undefined,
     spec:       undefined
   }
@@ -373,7 +374,8 @@ module.exports = function ( options ) {
   seneca.add( {init: store.name, tag: meta.tag}, function ( args, done ) {
     configure( internals.opts, function ( err ) {
       if ( err ) {
-        throw Eraro( {code: 'entity/configure', store: store.name, error: err, desc: internals.desc} );
+        console.log('err: ', err)
+        throw Eraro( 'entity/configure', "store: " + store.name, "error: " + err, "desc: " + internals.desc );
       }
       else done();
     } );
