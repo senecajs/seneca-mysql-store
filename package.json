@@ -36,11 +36,7 @@
   },
   "devDependencies": {
     "seneca": "~0.7.2",
-    "async": "~1.5.0",
-    "chai": "~1.10.0",
-    "gex": "~0.2.0",
     "lab": "~7.2.0",
-    "seneca-store-test": "~1.0.0",
-    "vows": "~0.8.1"
+    "seneca-store-test": "~1.0.0"
   }
 }

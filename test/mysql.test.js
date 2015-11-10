@@ -42,32 +42,19 @@ si.use(require('..'), dbConfig);
 
 si.use(require('..'), incrementConfig);
 
-si.__testcount = 0;
-var testcount = 0;
+describe('Level Test', function () {
+  shared.basictest({
+    seneca: si,
+    script: lab
+  })
 
-describe('mysql', function () {
-  it('basic', function (done) {
-    testcount++;
-    shared.basictest(si, done);
-  });
+  shared.sorttest({
+    seneca: si,
+    script: lab
+  })
 
-  it('sort', function(done){
-    testcount++;
-    shared.sorttest(si,done);
-  });
-
-  it('limits', function(done){
-    testcount++;
-    shared.limitstest(si,done);
-  });
-
-  it('extra', function (done) {
-    testcount++;
-    extra.test(si, done);
-  });
-
-  it('close', function (done) {
-    shared.closetest(si, testcount, done);
-  });
-});
-
+  shared.limitstest({
+    seneca: si,
+    script: lab
+  })
+})
