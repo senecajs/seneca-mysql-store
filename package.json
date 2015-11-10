@@ -1,11 +1,11 @@
 {
   "name": "seneca-mysql-store",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "MySQL database layer for Seneca framework",
   "main": "mysql-store.js",
   "license": "MIT",
   "scripts": {
-    "test": "node_modules/.bin/lab test -r console -v"
+    "test": "lab test -r console -v"
   },
   "repository": {
     "type": "git",
@@ -16,27 +16,30 @@
     "mysql",
     "plugin"
   ],
-  "author": "Mircea Alexandru",
+  "author": {
+    "name": "Mircea Alexandru",
+    "email": "mircea.alexandru@gmail.com"
+  },
   "contributors": [
     "Peter Elger (http://peterelger.com/)",
     "Chico Charlesworth (https://twitter.com/ccharlesworth)",
-    "Dean McDonnell (http://mcdonnelldean.me)"
+    "Dean McDonnell (http://mcdonnelldean.me)",
     "Paolo Chiodi (https://github.com/paolochiodi)",
     "Guy Ellis (https://github.com/guyellis)",
     "Richard Rodger (http://richardrodger.com/)"
   ],
   "dependencies": {
-    "lodash": "~3.0.1",
-    "mysql": "~2.5.4",
-    "node-uuid": "~1.4.1"
+    "lodash": "~3.10.0",
+    "mysql": "~2.9.0",
+    "node-uuid": "~1.4.3"
   },
   "devDependencies": {
-    "seneca": "~0.5.0",
-    "async": "~0.9.0",
+    "seneca": "~0.7.2",
+    "async": "~1.5.0",
     "chai": "~1.10.0",
     "gex": "~0.2.0",
-    "lab": "^5.16.0",
-    "seneca-store-test": "git://github.com/paolochiodi/seneca-store-test.git",
+    "lab": "~7.2.0",
+    "seneca-store-test": "~1.0.0",
     "vows": "~0.8.1"
   }
 }

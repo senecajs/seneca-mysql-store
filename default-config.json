@@ -1,0 +1,22 @@
+{
+  "minwait":         16,
+  "maxwait":         65336,
+  "query_log_level": "debug",
+  "auto_increment": false,
+  "benchmark": {
+    "rules": [
+      {
+        "time": 100,
+        "tag": "SLOW"
+      },
+      {
+        "time": 300,
+        "tag": "SLOWER"
+      },
+      {
+        "time": 500,
+        "tag": "SLOWEST"
+      }
+    ]
+  }
+}

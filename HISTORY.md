@@ -1,3 +1,9 @@
+# 0.4.1 2015/11/10
+- updated for seneca 0.7.x
+- cleanup code
+- improve tests
+- dockerize tests
+
 # 0.4.0 2015/02/04
 - updated for seneca 0.6.1
 
