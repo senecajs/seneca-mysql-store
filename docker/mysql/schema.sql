@@ -3,8 +3,11 @@ CREATE DATABASE senecatest;
 
 USE senecatest;
 
-CREATE USER 'senecatest'@'localhost' IDENTIFIED BY 'senecatest';
-GRANT ALL PRIVILEGES ON senecatest.* TO senecatest@localhost;
+CREATE USER 'senecatest'@'%' IDENTIFIED BY 'senecatest';
+GRANT ALL PRIVILEGES ON senecatest.* TO 'senecatest'@'%' WITH GRANT OPTION;
+CREATE USER 'root'@'%' IDENTIFIED BY 'near';
+GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;
+
 FLUSH PRIVILEGES;
 
 CREATE TABLE foo (id VARCHAR(36), p1 VARCHAR(255), p2 VARCHAR(255), p3 VARCHAR(255), seneca VARCHAR(125));

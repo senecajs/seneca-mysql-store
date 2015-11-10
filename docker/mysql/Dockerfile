@@ -3,7 +3,7 @@
 # Based on MySQL image
 ############################################################
 
-FROM mysql
+FROM malex:mysql
 
 MAINTAINER Mircea Alexandru <mircea.alexandru@gmail.com>
 
@@ -17,7 +17,10 @@ ADD schema.sql /tmp/schema.sql
 ADD init_db.sh /tmp/init_db.sh
 
 RUN chmod a+x /tmp/init_db.sh
+
 RUN /tmp/init_db.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
 
 EXPOSE 3306
 CMD ["mysqld"]

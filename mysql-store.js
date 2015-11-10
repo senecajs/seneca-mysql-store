@@ -151,7 +151,7 @@ module.exports = function ( options ) {
         return cb(err)
       }
 
-      internals.waitmillis = internals.opt.minwait;
+      internals.waitmillis = internals.opts.minwait;
       seneca.log( {tag$: 'init'}, 'db open and authed for ' + conf.username );
       conn.release();
       cb( null, store );
@@ -345,10 +345,10 @@ module.exports = function ( options ) {
 
       var qent = args.qent;
       var q = args.q;
-      var query = deletestm( qent, q, connectionPool );
+      var query = deletestm( qent, q, internals.connectionPool );
 
       internals.connectionPool.query( query, function ( err, result ) {
-        cb( err, result );
+        cb( err );
       } );
     },
 

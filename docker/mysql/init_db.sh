@@ -12,6 +12,9 @@ set -x
 mysqld --initialize-insecure
 
 # Start the MySQL daemon in the background.
+
+echo Start MySQL Daemon
+
 /usr/sbin/mysqld &
 mysql_pid=$!
 
@@ -23,9 +26,11 @@ done
 #mysql -e "GRANT ALL ON *.* TO root@'%' IDENTIFIED BY '' WITH GRANT OPTION"
 
 # create the default database from the ADDed file.
+echo Create test schema
 mysql < /tmp/schema.sql
 
 # Tell the MySQL daemon to shutdown.
+echo Stop MySQL Daemon
 mysqladmin shutdown
 
 # Wait for the MySQL daemon to exit.
