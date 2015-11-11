@@ -3,7 +3,7 @@
 # Based on MySQL image
 ############################################################
 
-FROM malex:mysql
+FROM malex/mysql
 
 MAINTAINER Mircea Alexandru <mircea.alexandru@gmail.com>
 
@@ -13,8 +13,8 @@ ENV DEBIAN_FRONTEND noninteractive
 # Create test schema
 ############################################################
 
-ADD docker/schema.sql /tmp/schema.sql
-ADD docker/init_db.sh /tmp/init_db.sh
+COPY schema.sql /tmp/schema.sql
+COPY init_db.sh /tmp/init_db.sh
 
 RUN chmod a+x /tmp/init_db.sh
 

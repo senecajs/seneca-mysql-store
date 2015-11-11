@@ -91,6 +91,16 @@ The standard Seneca query format is supported:
 
 Note: you can use `sort$`, `limit$`, `skip$` and `fields$` together.
 
+
+## Testing with Docker Compose
+
+With docker-machine and docker-compose installed run the following commands:
+
+```
+docker-compose build
+docker-compose up
+```
+
 ### Native Driver
 As with all seneca stores, you can access the native driver, in this case, the `mysql`
 `connectionPool` object using `entity.native$(function (err, connectionPool) {...})`.
