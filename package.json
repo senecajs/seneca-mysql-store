@@ -5,7 +5,8 @@
   "main": "mysql-store.js",
   "license": "MIT",
   "scripts": {
-    "test": "lab test -r console -v"
+    "test": "lab test/*.test.js -r console -v -L -m 3000 -t 80",
+    "annotate": "docco redis-queue-transport.js -o doc"
   },
   "repository": {
     "type": "git",
@@ -29,14 +30,18 @@
     "Richard Rodger (http://richardrodger.com/)"
   ],
   "dependencies": {
-    "eraro": "^0.4.1",
-    "lodash": "~3.10.0",
-    "mysql": "~2.9.0",
-    "node-uuid": "~1.4.3"
+    "eraro": "0.4.1",
+    "lodash": "3.10.0",
+    "mysql": "2.9.0",
+    "node-uuid": "1.4.3"
   },
   "devDependencies": {
+    "chai": "~3.4.1",
     "seneca": "~0.7.2",
     "lab": "~7.2.0",
-    "seneca-store-test": "~1.0.0"
+    "seneca-store-test": "~1.0.0",
+    "eslint-config-seneca": "1.x.x",
+    "eslint-plugin-hapi": "2.x.x",
+    "eslint-plugin-standard": "1.x.x"
   }
 }

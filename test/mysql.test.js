@@ -1,46 +1,43 @@
-/*jslint node: true */
-/*global describe:true, it:true */
+/* jslint node: true */
 /* Copyright (c) 2012 Mircea Alexandru */
 /*
  * These tests assume a MySQL database/structure is already created.
  * execute script/schema.sql to create
  */
 
-"use strict";
+'use strict'
 
-var _ = require('lodash');
-var assert = require('assert');
-var seneca = require('seneca');
-var async = require('async');
-var shared = require('seneca-store-test');
-var si = seneca();
-var extra = require('./mysql.ext.test.js');
-var fs = require('fs');
+var _ = require('lodash')
+var seneca = require('seneca')
+var shared = require('seneca-store-test')
+var si = seneca()
+var extra = require('./mysql.ext.test.js')
+var fs = require('fs')
 
-var Lab = require('lab');
-var lab = exports.lab = Lab.script();
+var Lab = require('lab')
+var lab = exports.lab = Lab.script()
 
-var describe = lab.describe;
-var it = lab.it;
+var describe = lab.describe
 
-var dbConfig;
-if(fs.existsSync(__dirname + '/../test/dbconfig.mine.js')) {
-  dbConfig = require('./dbconfig.mine');
-} else {
-  dbConfig = require('./dbconfig.example');
+var dbConfig
+if (fs.existsSync(__dirname + '/../test/dbconfig.mine.js')) {
+  dbConfig = require('./dbconfig.mine')
+}
+else {
+  dbConfig = require('./dbconfig.example')
 }
 
-console.log(dbConfig);
+console.log(dbConfig)
 
 var incrementConfig = _.assign(
-    {
-      map: { '-/-/incremental': '*' },
-      auto_increment: true
-    }, dbConfig);
+  {
+    map: { '-/-/incremental': '*' },
+    auto_increment: true
+  }, dbConfig)
 
-si.use(require('..'), dbConfig);
+si.use(require('..'), dbConfig)
 
-si.use(require('..'), incrementConfig);
+si.use(require('..'), incrementConfig)
 
 describe('Level Test', function () {
   shared.basictest({
@@ -54,6 +51,11 @@ describe('Level Test', function () {
   })
 
   shared.limitstest({
+    seneca: si,
+    script: lab
+  })
+
+  extra.extendTest({
     seneca: si,
     script: lab
   })

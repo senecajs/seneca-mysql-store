@@ -1,164 +1,169 @@
-/*jslint node: true */
-/*jslint asi: true */
-/*global describe:true, it:true */
-/* Copyright (c) 2010-2015 Richard Rodger */
+'use strict'
 
-"use strict";
-
-var seneca = require('seneca')
-var chai = require('chai');
-chai.Assertion.includeStack = true;
-var assert = chai.assert
-var async = require('async');
-
+var Async = require('async')
+var Assert = require('chai').assert
 
 var scratch = {}
-var verify = function(cb,tests){
-  return function(error,out) {
-    if (error) return cb(error);
-    tests(out)
-    cb()
-  }
+
+function extendTest (settings) {
+  var si = settings.seneca
+  var script = settings.script
+
+  var describe = script.describe
+  var it = script.it
+
+  describe('Extended tests', function () {
+    it('Extended tests', function extended (done) {
+      Async.series(
+        {
+          removeAll: function (next) {
+            var foo = si.make({name$: 'foo'})
+            foo.remove$({all$: true}, function (err, res) {
+              Assert(!err)
+              next()
+            })
+          },
+          listEmpty: function (next) {
+            var foo = si.make({name$: 'foo'})
+            foo.list$({}, function (err, res) {
+              Assert(!err)
+              Assert.equal(0, res.length)
+              next()
+            })
+          },
+          insert2: function (next) {
+            var foo = si.make({name$: 'foo'})
+            foo.p1 = 'v1'
+
+            foo.save$(foo, function (err, foo) {
+              Assert(!err)
+              Assert.isNotNull(foo.id)
+              Assert.equal('v1', foo.p1)
+              scratch.foo1 = foo
+              next()
+            })
+          },
+          list1: function (next) {
+            scratch.foo1.list$({}, function (err, res) {
+              Assert(!err)
+              Assert.equal(1, res.length)
+              next()
+            })
+          },
+
+          list2: function (next) {
+            scratch.foo1.list$({id: scratch.foo1.id}, function (err, res) {
+              Assert(!err)
+              Assert.equal(1, res.length)
+              next()
+            })
+          },
+          load1: function (next) {
+            scratch.foo1.load$({id: scratch.foo1.id}, function (err, res) {
+              Assert(!err)
+              Assert.isNotNull(res.id)
+              next()
+            })
+          },
+
+          update: function (next) {
+            scratch.foo1.p1 = 'v2'
+
+            scratch.foo1.save$(function (err, foo) {
+              Assert(!err)
+              Assert.isNotNull(foo.id)
+              Assert.equal('v2', foo.p1)
+              next()
+            })
+          },
+
+          load2: function (next) {
+            scratch.foo1.load$({id: scratch.foo1.id}, function (err, res) {
+              Assert(!err)
+              Assert.equal('v2', res.p1)
+              next()
+            })
+          },
+
+          insertwithsafe: function (next) {
+            var foo = si.make({name$: 'foo'})
+            foo.p1 = 'v3'
+
+            foo.save$(function (err, foo) {
+              Assert(!err)
+              Assert.isNotNull(foo.id)
+              Assert.equal('v3', foo.p1)
+              scratch.foo2 = foo
+              next()
+            })
+          },
+
+          list3: function (next) {
+            scratch.foo2.list$({id: scratch.foo2.id}, function (err, res) {
+              Assert(!err)
+              Assert.equal(1, res.length)
+              next()
+            })
+          },
+
+          list4: function (next) {
+            scratch.foo2.list$({id: scratch.foo2.id, limit$: 1}, function (err, res) {
+              Assert(!err)
+              Assert.equal(1, res.length)
+              next()
+            })
+          },
+
+          remove1: function (next) {
+            scratch.foo2.remove$({id: scratch.foo2.id}, function (err) {
+              Assert(!err)
+              next()
+            })
+          },
+
+          list5: function (next) {
+            var foo = si.make('foo')
+            foo.list$({}, function (err, res) {
+              Assert(!err)
+              Assert.equal(1, res.length)
+              next()
+            })
+          },
+
+          reportAllErrors: function (next) {
+            var foo = si.make('foo')
+            foo.missing_attribute = 'v1'
+
+            foo.save$(function (err, foo1) {
+              Assert.isNotNull(err)
+              next()
+            })
+          },
+
+          allowAutoIncrementId: function (next) {
+            var inc = si.make('incremental')
+            inc.p1 = 'v1'
+
+            inc.save$(function (err, inc1) {
+              Assert.isNull(err)
+              Assert.isNotNull(inc1.id)
+
+              inc.load$({id: inc1.id}, function (err, inc2) {
+                Assert.isNull(err)
+                Assert.isNotNull(inc2)
+                Assert.equal(inc2.id, inc1.id)
+                Assert.equal(inc2.p1, 'v1')
+                next()
+              })
+            })
+          }
+        },
+        function (err, out) {
+          Assert(!err)
+          done()
+        })
+    })
+  })
 }
 
-
-exports.test = function(si, cb) {
-  async.series({
-    removeAll: function(cb) {
-      console.log('removeAll');
-      var foo = si.make({name$:'foo'})
-      foo.remove$( {all$:true}, verify(cb, function(err){
-      }))
-    },
-    listEmpty: function(cb) {
-      console.log('listEmpty');
-      var foo = si.make({name$:'foo'})
-      foo.list$({}, verify(cb, function(res){
-        assert.equal( 0, res.length)
-      }))
-    },
-    insert2: function(cb) {
-      console.log('insert2');
-      var foo = si.make({name$:'foo'})
-      foo.p1 = 'v1'
-
-      foo.save$(foo, verify(cb, function(foo){
-        assert.isNotNull(foo.id)
-        assert.equal('v1',foo.p1)
-        scratch.foo1 = foo
-      }))
-    },
-    list1: function(cb) {
-      console.log('list1');
-      scratch.foo1.list$({}, verify(cb, function(res){
-        assert.equal( 1, res.length)
-      }))
-    },
-
-    list2: function(cb) {
-      console.log('list2');
-      scratch.foo1.list$({id:scratch.foo1.id}, verify(cb, function(res){
-        assert.equal( 1, res.length)
-      }))
-    },
-    load1: function(cb) {
-      console.log('load1');
-      scratch.foo1.load$({id:scratch.foo1.id}, verify(cb, function(res){
-        assert.isNotNull(res.id)
-      }))
-    },
-
-    update: function(cb) {
-      console.log('update');
-      scratch.foo1.p1 = 'v2'
-
-      scratch.foo1.save$(verify(cb, function(foo){
-        assert.isNotNull(foo.id)
-        assert.equal('v2',foo.p1)
-      }))
-    },
-
-    load2: function(cb) {
-      console.log('load2');
-      scratch.foo1.load$({id:scratch.foo1.id}, verify(cb, function(res){
-        assert.equal('v2',res.p1)
-      }))
-    },
-
-    insertwithsafe: function(cb) {
-      console.log('insertwithsafe');
-      var foo = si.make({name$:'foo'})
-      foo.p1 = 'v3'
-
-      foo.save$(verify(cb, function(foo){
-        assert.isNotNull(foo.id)
-        assert.equal('v3',foo.p1)
-        scratch.foo2 = foo
-      }))
-    },
-
-    list3: function(cb) {
-      console.log('list3');
-      scratch.foo2.list$({id:scratch.foo2.id}, verify(cb, function(res){
-        assert.equal( 1, res.length)
-      }))
-    },
-
-    list4: function(cb) {
-      console.log('list4');
-      scratch.foo2.list$({id:scratch.foo2.id, limit$:1}, verify(cb, function(res){
-        assert.equal( 1, res.length)
-      }))
-    },
-
-    remove1: function(cb) {
-      console.log('remove1');
-      scratch.foo2.remove$( {id:scratch.foo2.id}, verify(cb, function(err){
-      }))
-    },
-
-    list5: function(cb) {
-      console.log('list5');
-      var foo = si.make('foo')
-      foo.list$({}, verify(cb, function(res){
-        assert.equal( 1, res.length)
-      }))
-    },
-
-    reportAllErrors: function(cb) {
-      console.log('reportAllErrors');
-      var foo = si.make('foo')
-      foo.missing_attribute = 'v1'
-
-      foo.save$(function (err, foo1) {
-        assert.isNotNull(err)
-        cb()
-      })
-    },
-
-    allowAutoIncrementId: function(cb) {
-      console.log('allowAutoIncrementId');
-
-      var inc = si.make('incremental')
-      inc.p1 = 'v1'
-
-      inc.save$(function (err, inc1) {
-        assert.isNull(err)
-        assert.isNotNull(inc1.id)
-
-        inc.load$({id: inc1.id}, verify(cb, function (inc2) {
-          assert.isNull(err)
-          assert.isNotNull(inc2)
-          assert.equal(inc2.id, inc1.id)
-          assert.equal(inc2.p1, 'v1')
-        }))
-      })
-    }
-  },
-  function(err, out) {
-    si.__testcount++;
-    cb();
-  });
-  si.__testcount++;
-}
-
+module.exports.extendTest = extendTest
