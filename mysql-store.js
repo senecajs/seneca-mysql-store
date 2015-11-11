@@ -6,7 +6,7 @@ var Assert = require('assert')
 var _ = require('lodash')
 var MySQL = require('mysql')
 var UUID = require('node-uuid')
-var defaultConfig = require('./default-config.json')
+var defaultConfig = require('./default_config.json')
 
 var Eraro = require('eraro')({
   package: 'mysql'

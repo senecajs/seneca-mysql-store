@@ -13,8 +13,8 @@ ENV DEBIAN_FRONTEND noninteractive
 # Create test schema
 ############################################################
 
-ADD schema.sql /tmp/schema.sql
-ADD init_db.sh /tmp/init_db.sh
+ADD docker/schema.sql /tmp/schema.sql
+ADD docker/init_db.sh /tmp/init_db.sh
 
 RUN chmod a+x /tmp/init_db.sh
 
