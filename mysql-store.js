@@ -28,22 +28,11 @@ module.exports = function (options) {
     waitmillis: opts.minwait
   }
 
-//  internals.error = function (args, done, win) {
-//    return function (err, out) {
-//      if (err) {
-//        seneca.log( args.tag$, 'error: ' + err )
-//        throw Eraro( args.tag$, 'entity/error', err )
-//      }
-//      if (win) {
-//        return win(out)
-//      }
-//    }
-//  }
-
   internals.connectionPool = {
     query: function (query, inputs, cb) {
       var startDate = new Date()
 
+      // Print a report abouts operation and time to execute
       function report (err) {
         var log = {
           query: query,
@@ -89,7 +78,8 @@ module.exports = function (options) {
     }
   }
 
-
+  // Try to reconnect.<br>
+  // If error then increase time to wait and try again
   var reconnect = function () {
     configure(internals.spec, function (err, me) {
       if (err) {
@@ -107,13 +97,12 @@ module.exports = function (options) {
   }
 
 
-  /**
-   * configure the store - create a new store specific connection object
-   *
-   * params:
-   * spec - store specific configuration
-   * cb - callback
-   */
+  // Configure the store - create a new store specific connection object<br>
+  // Params:<br>
+  // <ul>
+  // <li>spec - store specific configuration<br>
+  // <li>cb - callback
+  // </ul>
   function configure (specification, cb) {
     Assert(specification)
     Assert(cb)
@@ -154,19 +143,11 @@ module.exports = function (options) {
     })
   }
 
-  /**
-   * the store interface returned to seneca
-   */
+  // The store interface returned to seneca
   var store = {
     name: internals.name,
 
-    /**
-     * close the connection
-     *
-     * params
-     * cmd - optional close command parameters
-     * cb - callback
-     */
+    // Close the connection
     close: function (cmd, cb) {
       Assert(cb)
 
@@ -184,13 +165,12 @@ module.exports = function (options) {
     },
 
 
-    /**
-     * save the data as specified in the entitiy block on the arguments object
-     *
-     * params
-     * args - of the form { ent: { id: , ..entitiy data..} }
-     * cb - callback
-     */
+    // Save the data as specified in the entitiy block on the arguments object<br>
+    // params<br>
+    // <ul>
+    // <li>args - of the form { ent: { id: , ..entitiy data..} }<br>
+    // <li>cb - callback
+    // </ul>
     save: function (args, cb) {
       Assert(args)
       Assert(cb)
@@ -246,12 +226,12 @@ module.exports = function (options) {
     },
 
 
-    /**
-     * load first matching item based on id
-     * params
-     * args - of the form { ent: { id: , ..entitiy data..} }
-     * cb - callback
-     */
+    // Load first matching item based on id<br>
+    // params<br>
+    // <ul>
+    // <li>args - of the form { ent: { id: , ..entitiy data..} }<br>
+    // <li>cb - callback<br>
+    // </ul>
     load: function (args, cb) {
       Assert(args)
       Assert(cb)
@@ -278,22 +258,20 @@ module.exports = function (options) {
     },
 
 
-    /**
-     * return a list of object based on the supplied query, if no query is supplied
-     * then 'select * from ...'
-     *
-     * Notes: trivial implementation and unlikely to perform well due to list copy
-     *        also only takes the first page of results from simple DB should in fact
-     *        follow paging model
-     *
-     * params
-     * args - of the form { ent: { id: , ..entitiy data..} }
-     * cb - callback
-     * a=1, b=2 simple
-     * next paging is optional in simpledb
-     * limit$ ->
-     * use native$
-     */
+    // Return a list of object based on the supplied query, if no query is supplied
+    // then 'select * from ...'<br>
+    // Notes: trivial implementation and unlikely to perform well due to list copy
+    //        also only takes the first page of results from simple DB should in fact
+    //        follow paging model<br>
+    // params:<br>
+    // <ul>
+    // <li>args - of the form { ent: { id: , ..entitiy data..} }<br>
+    // <li>cb - callback<br>
+    // a=1, b=2 simple<br>
+    // next paging is optional in simpledb<br>
+    // limit$ -><br>
+    // use native$<br>
+    // </ul>
     list: function (args, cb) {
       Assert(args)
       Assert(cb)
@@ -319,14 +297,13 @@ module.exports = function (options) {
     },
 
 
-    /**
-     * delete an item - fix this
-     *
-     * params
-     * args - of the form { ent: { id: , ..entitiy data..} }
-     * cb - callback
-     * { 'all$': true }
-     */
+    // Delete an item <br>
+    // params<br>
+    // <ul>
+    // <li>args - of the form { ent: { id: , ..entitiy data..} }<br>
+    // <li>cb - callback<br>
+    // { 'all$': true }
+    // </ul>
     remove: function (args, cb) {
       Assert(args)
       Assert(cb)
@@ -343,9 +320,7 @@ module.exports = function (options) {
     },
 
 
-    /**
-     * return the underlying native connection object
-     */
+    // Return the underlying native connection object
     native: function (args, cb) {
       Assert(args)
       Assert(cb)
@@ -357,7 +332,7 @@ module.exports = function (options) {
 
 
   /**
-   * initialization
+   * Initialization
    */
   var meta = seneca.store.init(seneca, opts, store)
   internals.desc = meta.desc
