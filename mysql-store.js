@@ -312,11 +312,39 @@ module.exports = function (options) {
 
       var qent = args.qent
       var q = args.q
-      var query = deletestm(qent, q, internals.connectionPool)
 
-      internals.connectionPool.query(query, function (err, result) {
-        cb(err)
-      })
+      if (q.load$) {
+        store.load(args, function (err, row) {
+          if (err) {
+            return cb(err)
+          }
+
+          if (!row) {
+            return cb()
+          }
+          executeRemove(args, row)
+        })
+      }
+      else {
+        executeRemove(args)
+      }
+
+      function executeRemove (args, row) {
+        var query = deletestm(qent, q, internals.connectionPool)
+
+        internals.connectionPool.query(query, function (err, result) {
+          if (err) {
+            return cb(err)
+          }
+
+          if (q.load$) {
+            cb(err, row)
+          }
+          else {
+            cb(err)
+          }
+        })
+      }
     },
 
 

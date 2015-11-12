@@ -5,7 +5,7 @@
   "main": "mysql-store.js",
   "license": "MIT",
   "scripts": {
-    "test": "lab test/*.test.js -r console -v -L -m 3000 -t 80",
+    "test": "lab test/*.test.js -r console -v -L -m 3000 -t 70",
     "annotate": "docco redis-queue-transport.js -o doc"
   },
   "repository": {
@@ -35,6 +35,14 @@
     "mysql": "2.9.0",
     "node-uuid": "1.4.3"
   },
+  "files": [
+    "README.md",
+    "HISTORY.md",
+    "LICENSE.txt",
+    "mysql-store.js",
+    "package.json",
+    "default_config.json"
+  ],
   "devDependencies": {
     "chai": "~3.4.1",
     "docco": "^0.7.0",
