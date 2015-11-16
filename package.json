@@ -6,7 +6,7 @@
   "license": "MIT",
   "scripts": {
     "test": "lab test/*.test.js -r console -v -L -m 3000 -t 70",
-    "annotate": "docco redis-queue-transport.js -o doc"
+    "annotate": "docco mysql-store.js -o doc"
   },
   "repository": {
     "type": "git",
@@ -18,7 +18,7 @@
     "plugin"
   ],
   "author": {
-    "name": "Mircea Alexandru",
+    "name": "Mircea Alexandru (http://www.alexandrumircea.ro)",
     "email": "mircea.alexandru@gmail.com"
   },
   "contributors": [
