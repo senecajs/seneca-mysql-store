@@ -1,6 +1,6 @@
 {
-  "minwait":         16,
-  "maxwait":         65336,
+  "minwait": 16,
+  "maxwait": 65336,
   "query_log_level": "debug",
   "auto_increment": false,
   "benchmark": {
