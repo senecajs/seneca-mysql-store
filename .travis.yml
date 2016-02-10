@@ -1,9 +1,20 @@
 sudo: false
 language: node_js
+
 node_js:
   - 0.10
   - 0.12
   - 4
+  - 5
+
 services: mysql
+
+cache:
+  directories:
+  - node_modules
+
 before_script:
   - mysql -h localhost -u root --password="" < ./script/schema.sql
+
+after_script:
+  npm run coverage

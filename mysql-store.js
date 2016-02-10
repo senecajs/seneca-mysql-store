@@ -1,6 +1,3 @@
-/* jslint node: true */
-/* Copyright (c) 2012 Mircea Alexandru */
-
 'use strict'
 var Assert = require('assert')
 var _ = require('lodash')
@@ -374,7 +371,7 @@ module.exports = function (options) {
     })
   })
 
-  return { name: store.name, tag: meta.tag }
+  return {name: store.name, tag: meta.tag}
 }
 
 

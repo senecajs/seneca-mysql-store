@@ -20,7 +20,8 @@ var lab = exports.lab = Lab.script()
 var describe = lab.describe
 
 var dbConfig
-if (Fs.existsSync(__dirname + '/../test/dbconfig.mine.js')) {
+if (Fs.existsSync(__dirname + '/dbconfig.mine.js')) {
+>>>>>>> cde3f963f26b964be53d084ff81b8c3c32b1e6f1
   dbConfig = require('./dbconfig.mine')
 }
 else {
