@@ -3,7 +3,7 @@ var Assert = require('assert')
 var _ = require('lodash')
 var MySQL = require('mysql')
 var UUID = require('node-uuid')
-var defaultConfig = require('./default_config.json')
+var DefaultConfig = require('./default_config.json')
 
 var Eraro = require('eraro')({
   package: 'mysql'
@@ -17,7 +17,7 @@ var SENECA_TYPE_COLUMN = 'seneca'
 module.exports = function (options) {
   var seneca = this
 
-  var opts = seneca.util.deepextend(defaultConfig, options)
+  var opts = seneca.util.deepextend(DefaultConfig, options)
   // Declare internals
   var internals = {
     name: 'mysql-store',
@@ -571,4 +571,3 @@ var deletestm = function (qent, q, connection) {
   }
   return 'DELETE FROM ' + table + wherestr + limistr
 }
-
