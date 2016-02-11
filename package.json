@@ -5,6 +5,9 @@
   "main": "mysql-store.js",
   "license": "MIT",
   "scripts": {
+    "build": "docker-compose build",
+    "start": "docker-compose up",
+    "stop": "docker-compose kill",
     "test": "node_modules/.bin/lab test -r console -v"
   },
   "repository": {
@@ -20,20 +23,21 @@
   "contributors": [
     "Peter Elger (http://peterelger.com/)",
     "Chico Charlesworth (https://twitter.com/ccharlesworth)",
-    "Dean McDonnell (http://mcdonnelldean.me)"
+    "Dean McDonnell (http://mcdonnelldean.me)",
     "Paolo Chiodi (https://github.com/paolochiodi)",
     "Guy Ellis (https://github.com/guyellis)",
-    "Richard Rodger (http://richardrodger.com/)"
+    "Richard Rodger (http://richardrodger.com/)",
+    "Mihai Dima <mihaizn@gmail.com>"
   ],
   "dependencies": {
-    "lodash": "~3.10.0",
-    "mysql": "~2.9.0",
-    "node-uuid": "~1.4.1"
+    "lodash": "3.10.1",
+    "mysql": "2.10.2",
+    "node-uuid": "1.4.7"
   },
   "devDependencies": {
-    "seneca": "^0.6.0",
-    "async": "^1.4.0",
-    "lab": "^5.16.0",
-    "seneca-store-test": "git://github.com/paolochiodi/seneca-store-test.git"
+    "seneca": "plugin",
+    "async": "1.5.0",
+    "lab": "6.x.x",
+    "seneca-store-test": "1.0.0"
   }
 }
