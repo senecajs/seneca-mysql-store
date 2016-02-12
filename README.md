@@ -39,6 +39,30 @@ To run tests, simply use npm:
 npm run test
 ```
 
+## To run tests with Docker
+
+Build the MySQL Docker image:
+
+```sh
+npm run build
+
+```
+
+Start the MySQL container:
+```sh
+npm run start
+```
+
+Stop the MySQL container:
+```sh
+npm run stop
+```
+
+While the container is running you can run the tests into another terminal:
+```sh
+npm run test
+```
+
 ## Quick Example
 ```js
 var seneca = require('seneca')()
