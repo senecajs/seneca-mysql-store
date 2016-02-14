@@ -144,9 +144,9 @@ Copyright Mircea Alexandru and other contributors 2016, Licensed under [MIT][].
 [mySql]: https://www.mysql.com/
 [node-mysqldb-native]: http://mysqldb.github.com/node-mysqldb-native/markdown-docs/queries.html
 
-[MIT]: ./LICENSE
+[MIT]: ./LICENSE.txt
 [Senecajs org]: https://github.com/senecajs/
 [Seneca.js]: https://www.npmjs.com/package/seneca
 [senecajs.org]: http://senecajs.org/
-[github issue]: https://github.com/rjrodger/seneca-mysql-store/issues
+[github issue]: https://github.com/senecajs/seneca-mysql-store/issues
 [@senecajs]: http://twitter.com/senecajs
