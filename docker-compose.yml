@@ -1,5 +1,5 @@
 mysql:
-  build: ./mysql
+  build: ./docker
   ports:
     - "3306:3306"
   environment:
