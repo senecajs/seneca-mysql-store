@@ -1,18 +1,17 @@
 ![Seneca](http://senecajs.org/files/assets/seneca-logo.png)
-> A [Seneca.js][] data storage plugin
+> A [Seneca.js](http://senecajs.org) Data Storage Plugin
 
 # seneca-mysql-store
-[![Build Status][travis-badge]][travis-url]
-[![Gitter][gitter-badge]][gitter-url]
 
-[![js-standard-style][standard-badge]][standard-style]
+[![npm version][npm-badge]][npm-url]
+[![Build Status][travis-badge]][travis-url]
+[![Coverage Status][coverage-badge]][coverage-url]
+[![Code Climate][codeclimate-badge]][codeclimate-url]
+[![Dependency Status][david-badge]][david-url]
+[![Gitter][gitter-badge]][gitter-url]
 
 A storage engine that uses [mySql][] to persist data. It may also be used as an example on how to
 implement a storage plugin for Seneca using an underlying relational store.
-
-- __Version:__ 0.4.0
-- __Tested on:__ Seneca 0.5.0
-- __Node:__ 0.10, 0.11
 
 If you're using this module, and need help, you can:
 
@@ -125,20 +124,28 @@ We encourage participation. If you feel you can help in any way, be it with
 examples, extra testing, or new features please get in touch.
 
 ## License
-Copyright Mircea Alexandru 2015, Licensed under [MIT][].
+Copyright Mircea Alexandru and other contributors 2016, Licensed under [MIT][].
 
-[travis-badge]: https://travis-ci.org/mirceaalexandru/seneca-mysql-store.svg
-[travis-url]: https://travis-ci.org/mirceaalexandru/seneca-mysql-store
+[npm-badge]: https://img.shields.io/npm/v/seneca-level-store.svg
+[npm-url]: https://npmjs.com/package/seneca-level-store
+[travis-badge]: https://travis-ci.org/senecajs/seneca-level-store.svg
+[travis-url]: https://travis-ci.org/senecajs/seneca-level-store
+[codeclimate-badge]: https://codeclimate.com/github/senecajs/seneca-level-store/badges/gpa.svg
+[codeclimate-url]: https://codeclimate.com/github/senecajs/seneca-level-store
+[coverage-badge]: https://coveralls.io/repos/senecajs/seneca-level-store/badge.svg?branch=master&service=github
+[coverage-url]: https://coveralls.io/github/senecajs/seneca-level-store?branch=master
+[david-badge]: https://david-dm.org/senecajs/seneca-level-store.svg
+[david-url]: https://david-dm.org/senecajs/seneca-level-store
+
 [gitter-badge]: https://badges.gitter.im/Join%20Chat.svg
 [gitter-url]: https://gitter.im/senecajs/seneca
-[standard-badge]: https://raw.githubusercontent.com/feross/standard/master/badge.png
-[standard-style]: https://github.com/feross/standard
 
-[MIT]: ./LICENSE
 [mySql]: https://www.mysql.com/
 [node-mysqldb-native]: http://mysqldb.github.com/node-mysqldb-native/markdown-docs/queries.html
+
+[MIT]: ./LICENSE
 [Senecajs org]: https://github.com/senecajs/
 [Seneca.js]: https://www.npmjs.com/package/seneca
 [senecajs.org]: http://senecajs.org/
-[github issue]: https://github.com/mirceaalexandru/seneca-mysql-store/issues
+[github issue]: https://github.com/rjrodger/seneca-level-store/issues
 [@senecajs]: http://twitter.com/senecajs

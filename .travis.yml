@@ -2,6 +2,20 @@ language: node_js
 node_js:
   - 0.11
   - 0.10
-services: mysql
+sudo: false
+
+node_js:
+  - '5'
+  - '4'
+  - '0.12'
+  - '0.10'
+
+cache:
+  directories:
+    - node_modules
+
+services:
+  - mysql
+
 before_script:
   - mysql -h localhost -u root --password="" < ./script/schema.sql
