@@ -13,6 +13,7 @@ var OBJECT_TYPE = 'o'
 var ARRAY_TYPE = 'a'
 var DATE_TYPE = 'd'
 var SENECA_TYPE_COLUMN = 'seneca'
+var storeName = 'mysql-store'
 
 module.exports = function (options) {
   var seneca = this
@@ -20,7 +21,7 @@ module.exports = function (options) {
   var opts = seneca.util.deepextend(DefaultConfig, options)
   // Declare internals
   var internals = {
-    name: 'mysql-store',
+    name: storeName,
     opts: opts,
     waitmillis: opts.minwait
   }
@@ -142,7 +143,7 @@ module.exports = function (options) {
 
   // The store interface returned to seneca
   var store = {
-    name: internals.name,
+    name: storeName,
 
     // Close the connection
     close: function (cmd, cb) {
@@ -229,9 +230,9 @@ module.exports = function (options) {
     // <li>args - of the form { ent: { id: , ..entitiy data..} }<br>
     // <li>cb - callback<br>
     // </ul>
-    load: function (args, cb) {
+    load: function (args, done) {
       Assert(args)
-      Assert(cb)
+      Assert(done)
       Assert(args.qent)
       Assert(args.q)
 
@@ -239,18 +240,26 @@ module.exports = function (options) {
       var qent = args.qent
       q.limit$ = 1
 
-      var query = selectstm(qent, q, internals.connectionPool)
-      internals.connectionPool.query(query, function (err, res, fields) {
+      seneca.act({role: storeName, hook: 'load'}, args, function (err, queryObj) {
+        var query = queryObj.query
+
         if (err) {
-          seneca.log(args.tag$, 'load', err)
-          return cb(err)
+          seneca.log.error(query, err)
+          return done(err, {code: 'load', tag: args.tag$, store: store.name, query: query, error: err})
         }
 
-        var ent = makeent(qent, res[0])
+        internals.connectionPool.query(query, function (err, res, fields) {
+          if (err) {
+            seneca.log(args.tag$, 'load', err)
+            return done(err)
+          }
 
-        seneca.log(args.tag$, 'load', ent)
+          var ent = makeent(qent, res[0])
 
-        cb(null, ent)
+          seneca.log(args.tag$, 'load', ent)
+
+          done(null, ent)
+        })
       })
     },
 
@@ -369,6 +378,15 @@ module.exports = function (options) {
       }
       else done()
     })
+  })
+
+  seneca.add({role: store.name, hook: 'load'}, function (args, done) {
+    var q = _.clone(args.q)
+    var qent = args.qent
+    q.limit$ = 1
+
+    var query = selectstm(qent, q, internals.connectionPool)
+    return done(null, {query: query})
   })
 
   return {name: store.name, tag: meta.tag}
