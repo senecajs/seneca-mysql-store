@@ -167,11 +167,11 @@ module.exports = function (options) {
     // params<br>
     // <ul>
     // <li>args - of the form { ent: { id: , ..entitiy data..} }<br>
-    // <li>cb - callback
+    // <li>done - callback
     // </ul>
-    save: function (args, cb) {
+    save: function (args, done) {
       Assert(args)
-      Assert(cb)
+      Assert(done)
       Assert(args.ent)
 
       var ent = args.ent
@@ -193,42 +193,34 @@ module.exports = function (options) {
 
       if (update) {
         query = 'UPDATE ' + tablename(ent) + ' SET ? WHERE id=\'' + entp.id + '\''
-        internals.connectionPool.query(query, entp, function (err, result) {
-          if (err) {
-            seneca.log(args.tag$, 'save/update', err)
-            return cb(err)
-          }
-
-          seneca.log(args.tag$, 'save/update', err, result)
-          cb(null, ent)
-        })
       }
       else {
         query = 'INSERT INTO ' + tablename(ent) + ' SET ?'
+      }
 
-        internals.connectionPool.query(query, entp, function (err, result) {
-          if (err) {
-            seneca.log(args.tag$, 'save/insert', err, query)
-            return cb(err)
-          }
+      internals.connectionPool.query(query, entp, function (err, result) {
+        if (err) {
+          seneca.log(args.tag$, update ? 'save/update' : 'save/insert', err, query)
+          return done(err)
+        }
 
-          seneca.log(args.tag$, 'save/insert', err, result, query)
+        seneca.log(args.tag$, update ? 'save/update' : 'save/insert', err, result, query)
 
+        if (!update) {
           if (internals.opts.auto_increment && result.insertId) {
             ent.id = result.insertId
           }
+        }
 
-          cb(null, ent)
-        })
-      }
+        done(null, ent)
+      })
     },
-
 
     // Load first matching item based on id<br>
     // params<br>
     // <ul>
     // <li>args - of the form { ent: { id: , ..entitiy data..} }<br>
-    // <li>cb - callback<br>
+    // <li>done - callback<br>
     // </ul>
     load: function (args, done) {
       Assert(args)
@@ -389,9 +381,12 @@ module.exports = function (options) {
     return done(null, {query: query})
   })
 
+  seneca.add({role: storeName, hook: 'save'}, function (args, done) {
+
+  })
+
   return {name: store.name, tag: meta.tag}
 }
-
 
 var fixquery = function (qent, q) {
   var qq = {}
