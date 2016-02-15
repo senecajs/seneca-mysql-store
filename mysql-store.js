@@ -174,43 +174,45 @@ module.exports = function (options) {
 
       var ent = args.ent
       var update = !!ent.id
-      var query
 
-      if (!ent.id) {
-        if (ent.id$) {
-          ent.id = ent.id$
-        }
-        else {
-          if (!internals.opts.auto_increment) {
-            ent.id = UUID()
-          }
-        }
-      }
-
-      var entp = QueryBuilder.makeentp(ent)
-
-      if (update) {
-        query = 'UPDATE ' + QueryBuilder.tablename(ent) + ' SET ? WHERE id=\'' + entp.id + '\''
-      }
-      else {
-        query = 'INSERT INTO ' + QueryBuilder.tablename(ent) + ' SET ?'
-      }
-
-      internals.connectionPool.query(query, entp, function (err, result) {
+      seneca.act({role: store.name, hook: 'save'}, args, function (err, queryObj) {
         if (err) {
-          seneca.log(args.tag$, update ? 'save/update' : 'save/insert', err, query)
-          return done(err)
+          seneca.log.error('MySQL save error', err)
+          return done(err, {code: operation, tag: args.tag$, store: store.name, query: query, error: err})
         }
 
-        seneca.log(args.tag$, update ? 'save/update' : 'save/insert', err, result, query)
-
-        if (!update) {
-          if (internals.opts.auto_increment && result.insertId) {
-            ent.id = result.insertId
+        if (!ent.id) {
+          if (ent.id$) {
+            ent.id = ent.id$
+          }
+          else {
+            if (!internals.opts.auto_increment) {
+              ent.id = UUID()
+            }
           }
         }
 
-        done(null, ent)
+        var entp = QueryBuilder.makeentp(ent)
+
+        var query = queryObj.query
+        var operation = queryObj.operation
+
+        internals.connectionPool.query(query, entp, function (err, result) {
+          if (err) {
+            seneca.log(args.tag$, operation, err, query)
+            return done(err)
+          }
+
+          seneca.log(args.tag$, operation, err, result, query)
+
+          if (!update) {
+            if (internals.opts.auto_increment && result.insertId) {
+              ent.id = result.insertId
+            }
+          }
+
+          done(null, ent)
+        })
       })
     },
 
