@@ -1,6 +1,7 @@
 'use strict'
 
 var _ = require('lodash')
+var MySQL = require('mysql')
 
 var OBJECT_TYPE = 'o'
 var ARRAY_TYPE = 'a'
@@ -27,7 +28,7 @@ function whereargs (qent, q) {
   return w
 }
 
-function selectstm (qent, q, connection) {
+function selectstm (qent, q) {
   var table = tablename(qent)
   var params = []
   var w = whereargs(makeentp(qent), q)
@@ -35,7 +36,7 @@ function selectstm (qent, q, connection) {
 
   if (!_.isEmpty(w)) {
     for (var param in w) {
-      params.push(param + ' = ' + connection.escape(w[param]))
+      params.push(param + ' = ' + MySQL.escape(w[param]))
     }
     wherestr = ' WHERE ' + params.join(' AND ')
   }
@@ -159,7 +160,7 @@ function makequeryfunc (qent, q, connection) {
       qf.q = nq
     }
     else {
-      var query = selectstm(qent, q, connection)
+      var query = selectstm(qent, q)
       qf = function (cb) {
         connection.query(query, cb)
       }
@@ -176,7 +177,7 @@ function makequeryfunc (qent, q, connection) {
   return qf
 }
 
-function deletestm (qent, q, connection) {
+function deletestm (qent, q) {
   var table = tablename(qent)
   var params = []
   var w = whereargs(makeentp(qent), q)
@@ -184,7 +185,7 @@ function deletestm (qent, q, connection) {
 
   if (!_.isEmpty(w)) {
     for (var param in w) {
-      params.push(param + ' = ' + connection.escape(w[param]))
+      params.push(param + ' = ' + MySQL.escape(w[param]))
     }
     wherestr = ' WHERE ' + params.join(' AND ')
   }

@@ -328,7 +328,7 @@ module.exports = function (options) {
       }
 
       function executeRemove (args, row) {
-        var query = QueryBuilder.deletestm(qent, q, internals.connectionPool)
+        var query = QueryBuilder.deletestm(qent, q)
 
         internals.connectionPool.query(query, function (err, result) {
           if (err) {
@@ -377,7 +377,7 @@ module.exports = function (options) {
     var qent = args.qent
     q.limit$ = 1
 
-    var query = QueryBuilder.selectstm(qent, q, internals.connectionPool)
+    var query = QueryBuilder.selectstm(qent, q)
     return done(null, {query: query})
   })
 
@@ -400,6 +400,14 @@ module.exports = function (options) {
     else {
       return done(null, {query: query, operation: 'save/insert'})
     }
+  })
+
+  seneca.add({role: storeName, hook: 'remove'}, function (args, done) {
+    var qent = args.qent
+    var q = args.q
+
+    var query = QueryBuilder.deletestm(qent, q)
+    return done(null, {query: query})
   })
 
   return {name: store.name, tag: meta.tag}
