@@ -12,6 +12,7 @@ var Eraro = require('eraro')({
 })
 
 var storeName = 'mysql-store'
+var actionRole = 'sql'
 
 module.exports = function (options) {
   var seneca = this
@@ -175,7 +176,7 @@ module.exports = function (options) {
       var ent = args.ent
       var update = !!ent.id
 
-      seneca.act({role: store.name, hook: 'save'}, args, function (err, queryObj) {
+      seneca.act({role: actionRole, hook: 'save', target: store.name}, args, function (err, queryObj) {
         if (err) {
           seneca.log.error('MySQL save error', err)
           return done(err, {code: operation, tag: args.tag$, store: store.name, query: query, error: err})
@@ -232,7 +233,7 @@ module.exports = function (options) {
       var qent = args.qent
       q.limit$ = 1
 
-      seneca.act({role: storeName, hook: 'load'}, args, function (err, queryObj) {
+      seneca.act({role: actionRole, hook: 'load', target: store.name}, args, function (err, queryObj) {
         var query = queryObj.query
 
         if (err) {
@@ -308,7 +309,6 @@ module.exports = function (options) {
       Assert(args.qent)
       Assert(args.q)
 
-      var qent = args.qent
       var q = args.q
 
       if (q.load$) {
@@ -328,23 +328,26 @@ module.exports = function (options) {
       }
 
       function executeRemove (args, row) {
-        var query = QueryBuilder.deletestm(qent, q)
-
-        internals.connectionPool.query(query, function (err, result) {
+        seneca.act({role: actionRole, hook: 'remove', target: store.name}, args, function (err, queryObj) {
+          var query = queryObj.query
           if (err) {
             return cb(err)
           }
+          internals.connectionPool.query(query, function (err, result) {
+            if (err) {
+              return cb(err)
+            }
 
-          if (q.load$) {
-            cb(err, row)
-          }
-          else {
-            cb(err)
-          }
+            if (q.load$) {
+              cb(err, row)
+            }
+            else {
+              cb(err)
+            }
+          })
         })
       }
     },
-
 
     // Return the underlying native connection object
     native: function (args, cb) {
@@ -372,7 +375,7 @@ module.exports = function (options) {
     })
   })
 
-  seneca.add({role: store.name, hook: 'load'}, function (args, done) {
+  seneca.add({role: actionRole, hook: 'load'}, function (args, done) {
     var q = _.clone(args.q)
     var qent = args.qent
     q.limit$ = 1
@@ -381,7 +384,7 @@ module.exports = function (options) {
     return done(null, {query: query})
   })
 
-  seneca.add({role: storeName, hook: 'save'}, function (args, done) {
+  seneca.add({role: actionRole, hook: 'save'}, function (args, done) {
     var ent = args.ent
     var update = !!ent.id
     var query
@@ -402,7 +405,7 @@ module.exports = function (options) {
     }
   })
 
-  seneca.add({role: storeName, hook: 'remove'}, function (args, done) {
+  seneca.add({role: actionRole, hook: 'remove'}, function (args, done) {
     var qent = args.qent
     var q = args.q
 
