@@ -134,47 +134,36 @@ function metaquery (qent, q) {
 }
 
 function makequeryfunc (qent, q, connection) {
-  var qf
+  var query = {}
+
   if (_.isArray(q)) {
     if (q.native$) {
-      qf = function (cb) {
-        var args = q.concat([cb])
-        connection.query.apply(connection, args)
-      }
-      qf.q = q
+    //   qf = function (cb) {
+    //     var args = q.concat([cb])
+    //     connection.query.apply(connection, args)
+    //   }
+    //   qf.q = q
+      return q // TODO: repair
     }
     else {
-      qf = function (cb) {
-        connection.query(q[0], _.tail(q), cb)
-      }
-      qf.q = {q: q[0], v: _.tail(q)}
+      query.text = q[0]
+      query.values = _.clone(q)
+      query.values.splice(0, 1)
+      return query
     }
   }
   else if (_.isObject(q)) {
     if (q.native$) {
       var nq = _.clone(q)
-      delete nq.native$
-      qf = function (cb) {
-        connection.query(nq, cb)
-      }
-      qf.q = nq
+      return nq
     }
     else {
-      var query = selectstm(qent, q)
-      qf = function (cb) {
-        connection.query(query, cb)
-      }
-      qf.q = query
+      return selectstm(qent, q)
     }
   }
   else {
-    qf = function (cb) {
-      connection.query(q, cb)
-    }
-    qf.q = q
+    return q
   }
-
-  return qf
 }
 
 function deletestm (qent, q) {

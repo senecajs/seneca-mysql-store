@@ -277,11 +277,20 @@ module.exports = function (options) {
       Assert(args.qent)
       Assert(args.q)
 
+      function execQuery (query, done) {
+        if (_.isString(query)) {
+          internals.connectionPool.query(query, done)
+        }
+        else {
+          internals.connectionPool.query(query.text, query.values, done)
+        }
+      }
+
       var qent = args.qent
       var q = args.q
       var queryfunc = QueryBuilder.makequeryfunc(qent, q, internals.connectionPool)
 
-      queryfunc(function (err, results) {
+      execQuery(queryfunc, function (err, results) {
         if (err) {
           return cb(err)
         }
@@ -382,6 +391,10 @@ module.exports = function (options) {
 
     var query = QueryBuilder.selectstm(qent, q)
     return done(null, {query: query})
+  })
+
+  seneca.add({role: actionRole, hook: 'list'}, function (args, done) {
+
   })
 
   seneca.add({role: actionRole, hook: 'save'}, function (args, done) {
