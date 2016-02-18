@@ -271,9 +271,9 @@ module.exports = function (options) {
     // limit$ -><br>
     // use native$<br>
     // </ul>
-    list: function (args, cb) {
+    list: function (args, done) {
       Assert(args)
-      Assert(cb)
+      Assert(done)
       Assert(args.qent)
       Assert(args.q)
 
@@ -287,23 +287,29 @@ module.exports = function (options) {
       }
 
       var qent = args.qent
-      var q = args.q
-      var query = QueryBuilder.makelistquery(qent, q, internals.connectionPool)
 
-      execQuery(query, function (err, results) {
+      seneca.act({role: actionRole, hook: 'list', target: store.name}, args, function (err, queryObj) {
+        var query = queryObj.query
+
         if (err) {
-          return cb(err)
+          seneca.log.error(query, err)
+          return done(err, {code: 'list', tag: args.tag$, store: store.name, query: query, error: err})
         }
 
-        var list = []
-        results.forEach(function (row) {
-          var ent = QueryBuilder.makeent(qent, row)
-          list.push(ent)
+        execQuery(query, function (err, results) {
+          if (err) {
+            return done(err)
+          }
+
+          var list = []
+          results.forEach(function (row) {
+            var ent = QueryBuilder.makeent(qent, row)
+            list.push(ent)
+          })
+          done(null, list)
         })
-        cb(null, list)
       })
     },
-
 
     // Delete an item <br>
     // params<br>
@@ -394,7 +400,11 @@ module.exports = function (options) {
   })
 
   seneca.add({role: actionRole, hook: 'list'}, function (args, done) {
+    var qent = args.qent
+    var q = args.q
 
+    var query = QueryBuilder.makelistquery(qent, q)
+    return done(null, {query: query})
   })
 
   seneca.add({role: actionRole, hook: 'save'}, function (args, done) {

@@ -133,7 +133,7 @@ function metaquery (qent, q) {
   return mq
 }
 
-function makelistquery (qent, q, connection) {
+function makelistquery (qent, q) {
   var query = {}
   var qf = q
   if (q.native$) {
