@@ -133,36 +133,24 @@ function metaquery (qent, q) {
   return mq
 }
 
-function makequeryfunc (qent, q, connection) {
+function makelistquery (qent, q, connection) {
   var query = {}
-
-  if (_.isArray(q)) {
-    if (q.native$) {
-    //   qf = function (cb) {
-    //     var args = q.concat([cb])
-    //     connection.query.apply(connection, args)
-    //   }
-    //   qf.q = q
-      return q // TODO: repair
-    }
-    else {
-      query.text = q[0]
-      query.values = _.clone(q)
-      query.values.splice(0, 1)
-      return query
-    }
+  var qf = q
+  if (q.native$) {
+    qf = q.native$
   }
-  else if (_.isObject(q)) {
-    if (q.native$) {
-      var nq = _.clone(q)
-      return nq
-    }
-    else {
-      return selectstm(qent, q)
-    }
+
+  if (_.isArray(qf)) {
+    query.text = qf[0]
+    query.values = _.clone(qf)
+    query.values.splice(0, 1)
+    return query
+  }
+  else if (_.isObject(qf)) {
+    return selectstm(qent, qf)
   }
   else {
-    return q
+    return qf
   }
 }
 
@@ -193,5 +181,5 @@ module.exports.tablename = tablename
 module.exports.makeentp = makeentp
 module.exports.makeent = makeent
 module.exports.metaquery = metaquery
-module.exports.makequeryfunc = makequeryfunc
+module.exports.makelistquery = makelistquery
 module.exports.deletestm = deletestm

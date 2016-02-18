@@ -288,9 +288,9 @@ module.exports = function (options) {
 
       var qent = args.qent
       var q = args.q
-      var queryfunc = QueryBuilder.makequeryfunc(qent, q, internals.connectionPool)
+      var query = QueryBuilder.makelistquery(qent, q, internals.connectionPool)
 
-      execQuery(queryfunc, function (err, results) {
+      execQuery(query, function (err, results) {
         if (err) {
           return cb(err)
         }
