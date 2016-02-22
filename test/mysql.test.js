@@ -10,7 +10,6 @@
 var _ = require('lodash')
 var Seneca = require('seneca')
 var Shared = require('seneca-store-test')
-var Si = Seneca()
 var Extra = require('./mysql.ext.test.js')
 var Fs = require('fs')
 
@@ -21,14 +20,11 @@ var describe = lab.describe
 
 var dbConfig
 if (Fs.existsSync(__dirname + '/dbconfig.mine.js')) {
->>>>>>> cde3f963f26b964be53d084ff81b8c3c32b1e6f1
   dbConfig = require('./dbconfig.mine')
 }
 else {
   dbConfig = require('./dbconfig.example')
 }
-
-console.log(dbConfig)
 
 var incrementConfig = _.assign(
   {
@@ -36,28 +32,33 @@ var incrementConfig = _.assign(
     auto_increment: true
   }, dbConfig)
 
-Si.use(require('..'), dbConfig)
+var si = Seneca()
+si.use(require('..'), dbConfig)
+si.use(require('..'), incrementConfig)
 
-Si.use(require('..'), incrementConfig)
-
-describe('Level Test', function () {
+describe('MySQL Test', function () {
   Shared.basictest({
-    seneca: Si,
+    seneca: si,
     script: lab
   })
 
   Shared.sorttest({
-    seneca: Si,
+    seneca: si,
     script: lab
   })
 
   Shared.limitstest({
-    seneca: Si,
+    seneca: si,
+    script: lab
+  })
+
+  Shared.sqltest({
+    seneca: si,
     script: lab
   })
 
   Extra.extendTest({
-    seneca: Si,
+    seneca: si,
     script: lab
   })
 })

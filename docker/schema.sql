@@ -1,13 +1,16 @@
+/* Copyright (c) 2012 Mircea Alexandru */
+/* execute using mysql -u root < dbschema.sql */
+
 DROP DATABASE IF EXISTS senecatest;
 CREATE DATABASE senecatest;
 
 USE senecatest;
 
-CREATE USER 'senecatest'@'%' IDENTIFIED BY 'senecatest';
-GRANT ALL PRIVILEGES ON senecatest.* TO 'senecatest'@'%' WITH GRANT OPTION;
-CREATE USER 'root'@'%' IDENTIFIED BY 'near';
-GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;
-
+/* Create user senecatest with harmless privilege so that DROP USER does not throw error on next line if user does not exist */
+GRANT USAGE ON *.* TO 'senecatest';
+DROP USER 'senecatest';
+CREATE USER 'senecatest' IDENTIFIED BY 'senecatest';
+GRANT ALL PRIVILEGES ON senecatest.* TO senecatest;
 FLUSH PRIVILEGES;
 
 CREATE TABLE foo (id VARCHAR(36), p1 VARCHAR(255), p2 VARCHAR(255), p3 VARCHAR(255), seneca VARCHAR(125));
