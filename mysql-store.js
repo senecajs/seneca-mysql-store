@@ -140,6 +140,15 @@ module.exports = function (options) {
     })
   }
 
+  function execQuery (query, done) {
+    if (_.isString(query)) {
+      internals.connectionPool.query(query, done)
+    }
+    else {
+      internals.connectionPool.query(query.text, query.values, done)
+    }
+  }
+
   // The store interface returned to seneca
   var store = {
     name: storeName,
@@ -241,7 +250,7 @@ module.exports = function (options) {
           return done(err, {code: 'load', tag: args.tag$, store: store.name, query: query, error: err})
         }
 
-        internals.connectionPool.query(query, function (err, res, fields) {
+        execQuery(query, function (err, res, fields) {
           if (err) {
             seneca.log(args.tag$, 'load', err)
             return done(err)
@@ -276,15 +285,6 @@ module.exports = function (options) {
       Assert(done)
       Assert(args.qent)
       Assert(args.q)
-
-      function execQuery (query, done) {
-        if (_.isString(query)) {
-          internals.connectionPool.query(query, done)
-        }
-        else {
-          internals.connectionPool.query(query.text, query.values, done)
-        }
-      }
 
       var qent = args.qent
 
