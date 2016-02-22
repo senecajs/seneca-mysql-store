@@ -3,10 +3,132 @@
 var _ = require('lodash')
 var MySQL = require('mysql')
 
+var RelationalStore = require('./lib/relational-util')
+var OpParser = require('./lib/operator_parser')
+
 var OBJECT_TYPE = 'o'
 var ARRAY_TYPE = 'a'
 var DATE_TYPE = 'd'
 var SENECA_TYPE_COLUMN = 'seneca'
+
+var buildQueryFromExpressionPg = function (entp, query_parameters, values) {
+  var params = []
+  values = values || []
+
+  if (!_.isEmpty(query_parameters) && query_parameters.params.length > 0) {
+    for (var i in query_parameters.params) {
+      var current_name = query_parameters.params[i]
+      var current_value = query_parameters.values[i]
+
+      var result = parseExpression(current_name, current_value)
+      if (result.err) {
+        return result
+      }
+    }
+
+    return {err: null, data: params.join(' AND '), values: values}
+  }
+  else {
+    return {values: values}
+  }
+
+  function parseOr (current_name, current_value) {
+    if (!_.isArray(current_value)) {
+      return {err: 'or$ operator requires an array value'}
+    }
+
+    var results = []
+    for (var i in current_value) {
+      var w = whereargsPg(entp, current_value[i])
+      var current_result = buildQueryFromExpressionPg(entp, w, values)
+      values = current_result.values
+      results.push(current_result)
+    }
+
+    var resultStr = ''
+    for (i in results) {
+      if (resultStr.length > 0) {
+        resultStr += ' OR '
+      }
+      resultStr += results[i].data
+    }
+    console.log('(' + resultStr + ')')
+    params.push('(' + resultStr + ')')
+  }
+
+  function parseAnd (current_name, current_value) {
+    if (!_.isArray(current_value)) {
+      return {err: 'and$ operator requires an array value'}
+    }
+
+    var results = []
+    for (var i in current_value) {
+      var w = whereargsPg(entp, current_value[i])
+      var current_result = buildQueryFromExpressionPg(entp, w, values)
+      values = current_result.values
+      results.push(current_result)
+    }
+
+    var resultStr = ''
+    for (i in results) {
+      if (resultStr.length > 0) {
+        resultStr += ' AND '
+      }
+      resultStr += results[i].data
+    }
+    console.log('(' + resultStr + ')')
+    params.push('(' + resultStr + ')')
+  }
+
+  function parseExpression (current_name, current_value) {
+    if (current_name === 'or$') {
+      parseOr(current_name, current_value)
+    }
+    else if (current_name === 'and$') {
+      parseAnd(current_name, current_value)
+    }
+    else {
+      if (current_name.indexOf('$') !== -1) {
+        return {}
+      }
+
+      if (current_value === null) {
+        // we can't use the equality on null because NULL != NULL
+        params.push('"' + RelationalStore.escapeStr(RelationalStore.camelToSnakeCase(current_name)) + '" IS NULL')
+      }
+      else if (current_value instanceof RegExp) {
+        var op = (current_value.ignoreCase) ? '~*' : '~'
+        values.push(current_value.source)
+        params.push('"' + RelationalStore.escapeStr(RelationalStore.camelToSnakeCase(current_name)) + '"' + op + '?')
+      }
+      else if (_.isObject(current_value)) {
+        var result = parseComplexSelectOperator(current_name, current_value, params)
+        if (result.err) {
+          return result
+        }
+      }
+      else {
+        values.push(current_value)
+        params.push('"' + RelationalStore.escapeStr(RelationalStore.camelToSnakeCase(current_name)) + '"' + '=' + '?')
+      }
+    }
+    return {}
+  }
+
+  function parseComplexSelectOperator (current_name, current_value, params) {
+    for (var op in current_value) {
+      var op_val = current_value[op]
+      if (!OpParser[op]) {
+        return {err: 'This operator is not yet implemented: ' + op}
+      }
+      var err = OpParser[op](current_name, op_val, params, values)
+      if (err) {
+        return {err: err}
+      }
+    }
+    return {}
+  }
+}
 
 function fixquery (qent, q) {
   var qq = {}
@@ -16,6 +138,24 @@ function fixquery (qent, q) {
     }
   }
   return qq
+}
+
+function whereargsPg (entp, q) {
+  var w = {}
+
+  w.params = []
+  w.values = []
+
+  var qok = RelationalStore.fixquery(entp, q)
+
+  for (var p in qok) {
+    if (qok[p] !== undefined) {
+      w.params.push(RelationalStore.camelToSnakeCase(p))
+      w.values.push(qok[p])
+    }
+  }
+
+  return w
 }
 
 function whereargs (qent, q) {
@@ -45,6 +185,50 @@ function selectstm (qent, q) {
   var metastr = ' ' + mq.join(' ')
 
   return 'SELECT * FROM ' + table + wherestr + metastr
+}
+
+function selectstmPg (qent, q, done) {
+  var specialOps = ['fields$']
+  var specialOpsVal = {}
+
+  var stm = {}
+
+  for (var i in specialOps) {
+    if (q[specialOps[i]]) {
+      specialOpsVal[specialOps[i]] = q[specialOps[i]]
+      delete q[specialOps[i]]
+    }
+  }
+
+  var table = RelationalStore.tablename(qent)
+  var entp = RelationalStore.makeentp(qent)
+
+
+  var w = whereargsPg(entp, q)
+
+  var response = buildQueryFromExpressionPg(entp, w)
+  if (response.err) {
+    return done(response.err)
+  }
+
+  var wherestr = response.data
+
+  var values = response.values
+
+  var mq = metaqueryPg(qent, q)
+
+  var metastr = ' ' + mq.params.join(' ')
+
+  var what = '*'
+  if (specialOpsVal['fields$'] && _.isArray(specialOpsVal['fields$']) && specialOpsVal['fields$'].length > 0) {
+    what = ' ' + specialOpsVal['fields$'].join(', ')
+    what += ', id '
+  }
+
+  stm.text = 'SELECT ' + what + ' FROM ' + RelationalStore.escapeStr(table) + (wherestr ? ' WHERE ' + wherestr : '') + RelationalStore.escapeStr(metastr)
+  stm.values = values
+
+  done(null, stm)
 }
 
 function tablename (entity) {
@@ -133,6 +317,29 @@ function metaquery (qent, q) {
   return mq
 }
 
+function metaqueryPg (qent, q) {
+  var mq = {}
+
+  mq.params = []
+  mq.values = []
+
+  if (q.sort$) {
+    for (var sf in q.sort$) break
+    var sd = q.sort$[sf] > 0 ? 'ASC' : 'DESC'
+    mq.params.push('ORDER BY ' + RelationalStore.camelToSnakeCase(sf) + ' ' + sd)
+  }
+
+  if (q.limit$) {
+    mq.params.push('LIMIT ' + q.limit$)
+  }
+
+  if (q.skip$) {
+    mq.params.push('OFFSET ' + q.skip$)
+  }
+
+  return mq
+}
+
 function makelistquery (qent, q) {
   var query = {}
   var qf = q
@@ -177,6 +384,7 @@ function deletestm (qent, q) {
 module.exports.fixquery = fixquery
 module.exports.whereargs = whereargs
 module.exports.selectstm = selectstm
+module.exports.selectstmPg = selectstmPg
 module.exports.tablename = tablename
 module.exports.makeentp = makeentp
 module.exports.makeent = makeent

@@ -395,8 +395,9 @@ module.exports = function (options) {
     var qent = args.qent
     q.limit$ = 1
 
-    var query = QueryBuilder.selectstm(qent, q)
-    return done(null, {query: query})
+    QueryBuilder.selectstmPg(qent, q, function (err, query) {
+      return done(err, {query: query})
+    })
   })
 
   seneca.add({role: actionRole, hook: 'list'}, function (args, done) {
