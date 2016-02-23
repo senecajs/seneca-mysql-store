@@ -1,18 +1,18 @@
 'use strict'
+
 var Assert = require('assert')
 var _ = require('lodash')
 var MySQL = require('mysql')
 var UUID = require('node-uuid')
 var DefaultConfig = require('./default_config.json')
+var QueryBuilder = require('./query-builder')
 
 var Eraro = require('eraro')({
   package: 'mysql'
 })
 
-var OBJECT_TYPE = 'o'
-var ARRAY_TYPE = 'a'
-var DATE_TYPE = 'd'
-var SENECA_TYPE_COLUMN = 'seneca'
+var storeName = 'mysql-store'
+var actionRole = 'sql'
 
 module.exports = function (options) {
   var seneca = this
@@ -20,7 +20,7 @@ module.exports = function (options) {
   var opts = seneca.util.deepextend(DefaultConfig, options)
   // Declare internals
   var internals = {
-    name: 'mysql-store',
+    name: storeName,
     opts: opts,
     waitmillis: opts.minwait
   }
@@ -142,7 +142,7 @@ module.exports = function (options) {
 
   // The store interface returned to seneca
   var store = {
-    name: internals.name,
+    name: storeName,
 
     // Close the connection
     close: function (cmd, cb) {
@@ -166,72 +166,66 @@ module.exports = function (options) {
     // params<br>
     // <ul>
     // <li>args - of the form { ent: { id: , ..entitiy data..} }<br>
-    // <li>cb - callback
+    // <li>done - callback
     // </ul>
-    save: function (args, cb) {
+    save: function (args, done) {
       Assert(args)
-      Assert(cb)
+      Assert(done)
       Assert(args.ent)
 
       var ent = args.ent
       var update = !!ent.id
-      var query
 
-      if (!ent.id) {
-        if (ent.id$) {
-          ent.id = ent.id$
+      seneca.act({role: actionRole, hook: 'save', target: store.name}, args, function (err, queryObj) {
+        if (err) {
+          seneca.log.error('MySQL save error', err)
+          return done(err, {code: operation, tag: args.tag$, store: store.name, query: query, error: err})
         }
-        else {
-          if (!internals.opts.auto_increment) {
-            ent.id = UUID()
+
+        if (!ent.id) {
+          if (ent.id$) {
+            ent.id = ent.id$
+          }
+          else {
+            if (!internals.opts.auto_increment) {
+              ent.id = UUID()
+            }
           }
         }
-      }
 
-      var entp = makeentp(ent)
+        var entp = QueryBuilder.makeentp(ent)
 
-      if (update) {
-        query = 'UPDATE ' + tablename(ent) + ' SET ? WHERE id=\'' + entp.id + '\''
-        internals.connectionPool.query(query, entp, function (err, result) {
-          if (err) {
-            seneca.log(args.tag$, 'save/update', err)
-            return cb(err)
-          }
-
-          seneca.log(args.tag$, 'save/update', err, result)
-          cb(null, ent)
-        })
-      }
-      else {
-        query = 'INSERT INTO ' + tablename(ent) + ' SET ?'
+        var query = queryObj.query
+        var operation = queryObj.operation
 
         internals.connectionPool.query(query, entp, function (err, result) {
           if (err) {
-            seneca.log(args.tag$, 'save/insert', err, query)
-            return cb(err)
+            seneca.log(args.tag$, operation, err, query)
+            return done(err)
           }
 
-          seneca.log(args.tag$, 'save/insert', err, result, query)
+          seneca.log(args.tag$, operation, err, result, query)
 
-          if (internals.opts.auto_increment && result.insertId) {
-            ent.id = result.insertId
+          if (!update) {
+            if (internals.opts.auto_increment && result.insertId) {
+              ent.id = result.insertId
+            }
           }
 
-          cb(null, ent)
+          done(null, ent)
         })
-      }
+      })
     },
-
 
     // Load first matching item based on id<br>
     // params<br>
     // <ul>
     // <li>args - of the form { ent: { id: , ..entitiy data..} }<br>
-    // <li>cb - callback<br>
+    // <li>done - callback<br>
     // </ul>
-    load: function (args, cb) {
+    load: function (args, done) {
       Assert(args)
-      Assert(cb)
+      Assert(done)
       Assert(args.qent)
       Assert(args.q)
 
@@ -239,18 +233,26 @@ module.exports = function (options) {
       var qent = args.qent
       q.limit$ = 1
 
-      var query = selectstm(qent, q, internals.connectionPool)
-      internals.connectionPool.query(query, function (err, res, fields) {
+      seneca.act({role: actionRole, hook: 'load', target: store.name}, args, function (err, queryObj) {
+        var query = queryObj.query
+
         if (err) {
-          seneca.log(args.tag$, 'load', err)
-          return cb(err)
+          seneca.log.error(query, err)
+          return done(err, {code: 'load', tag: args.tag$, store: store.name, query: query, error: err})
         }
 
-        var ent = makeent(qent, res[0])
+        internals.connectionPool.query(query, function (err, res, fields) {
+          if (err) {
+            seneca.log(args.tag$, 'load', err)
+            return done(err)
+          }
 
-        seneca.log(args.tag$, 'load', ent)
+          var ent = QueryBuilder.makeent(qent, res[0])
 
-        cb(null, ent)
+          seneca.log(args.tag$, 'load', ent)
+
+          done(null, ent)
+        })
       })
     },
 
@@ -269,30 +271,45 @@ module.exports = function (options) {
     // limit$ -><br>
     // use native$<br>
     // </ul>
-    list: function (args, cb) {
+    list: function (args, done) {
       Assert(args)
-      Assert(cb)
+      Assert(done)
       Assert(args.qent)
       Assert(args.q)
 
-      var qent = args.qent
-      var q = args.q
-      var queryfunc = makequeryfunc(qent, q, internals.connectionPool)
+      function execQuery (query, done) {
+        if (_.isString(query)) {
+          internals.connectionPool.query(query, done)
+        }
+        else {
+          internals.connectionPool.query(query.text, query.values, done)
+        }
+      }
 
-      queryfunc(function (err, results) {
+      var qent = args.qent
+
+      seneca.act({role: actionRole, hook: 'list', target: store.name}, args, function (err, queryObj) {
+        var query = queryObj.query
+
         if (err) {
-          return cb(err)
+          seneca.log.error(query, err)
+          return done(err, {code: 'list', tag: args.tag$, store: store.name, query: query, error: err})
         }
 
-        var list = []
-        results.forEach(function (row) {
-          var ent = makeent(qent, row)
-          list.push(ent)
+        execQuery(query, function (err, results) {
+          if (err) {
+            return done(err)
+          }
+
+          var list = []
+          results.forEach(function (row) {
+            var ent = QueryBuilder.makeent(qent, row)
+            list.push(ent)
+          })
+          done(null, list)
         })
-        cb(null, list)
       })
     },
-
 
     // Delete an item <br>
     // params<br>
@@ -307,7 +324,6 @@ module.exports = function (options) {
       Assert(args.qent)
       Assert(args.q)
 
-      var qent = args.qent
       var q = args.q
 
       if (q.load$) {
@@ -327,23 +343,26 @@ module.exports = function (options) {
       }
 
       function executeRemove (args, row) {
-        var query = deletestm(qent, q, internals.connectionPool)
-
-        internals.connectionPool.query(query, function (err, result) {
+        seneca.act({role: actionRole, hook: 'remove', target: store.name}, args, function (err, queryObj) {
+          var query = queryObj.query
           if (err) {
             return cb(err)
           }
+          internals.connectionPool.query(query, function (err, result) {
+            if (err) {
+              return cb(err)
+            }
 
-          if (q.load$) {
-            cb(err, row)
-          }
-          else {
-            cb(err)
-          }
+            if (q.load$) {
+              cb(err, row)
+            }
+            else {
+              cb(err)
+            }
+          })
         })
       }
     },
-
 
     // Return the underlying native connection object
     native: function (args, cb) {
@@ -371,203 +390,51 @@ module.exports = function (options) {
     })
   })
 
-  return {name: store.name, tag: meta.tag}
-}
+  seneca.add({role: actionRole, hook: 'load'}, function (args, done) {
+    var q = _.clone(args.q)
+    var qent = args.qent
+    q.limit$ = 1
 
+    var query = QueryBuilder.selectstm(qent, q)
+    return done(null, {query: query})
+  })
 
-var fixquery = function (qent, q) {
-  var qq = {}
-  for (var qp in q) {
-    if (!qp.match(/\$$/)) {
-      qq[qp] = q[qp]
-    }
-  }
-  return qq
-}
+  seneca.add({role: actionRole, hook: 'list'}, function (args, done) {
+    var qent = args.qent
+    var q = args.q
 
+    var query = QueryBuilder.makelistquery(qent, q)
+    return done(null, {query: query})
+  })
 
-var whereargs = function (qent, q) {
-  var w = {}
-  var qok = fixquery(qent, q)
+  seneca.add({role: actionRole, hook: 'save'}, function (args, done) {
+    var ent = args.ent
+    var update = !!ent.id
+    var query
+    var entp = QueryBuilder.makeentp(ent)
 
-  for (var p in qok) {
-    w[p] = qok[p]
-  }
-  return w
-}
-
-
-var selectstm = function (qent, q, connection) {
-  var table = tablename(qent)
-  var params = []
-  var w = whereargs(makeentp(qent), q)
-  var wherestr = ''
-
-  if (!_.isEmpty(w)) {
-    for (var param in w) {
-      params.push(param + ' = ' + connection.escape(w[param]))
-    }
-    wherestr = ' WHERE ' + params.join(' AND ')
-  }
-
-  var mq = metaquery(qent, q)
-  var metastr = ' ' + mq.join(' ')
-
-  return 'SELECT * FROM ' + table + wherestr + metastr
-}
-
-
-var tablename = function (entity) {
-  var canon = entity.canon$({object: true})
-  return (canon.base ? canon.base + '_' : '') + canon.name
-}
-
-
-var makeentp = function (ent) {
-  var entp = {}
-  var fields = ent.fields$()
-  var type = {}
-
-  fields.forEach(function (field) {
-    if (_.isArray(ent[field])) {
-      type[field] = ARRAY_TYPE
-    }
-    else if (!_.isDate(ent[field]) && _.isObject(ent[field])) {
-      type[field] = OBJECT_TYPE
-    }
-
-    if (!_.isDate(ent[field]) && _.isObject(ent[field])) {
-      entp[field] = JSON.stringify(ent[field])
+    if (update) {
+      query = 'UPDATE ' + QueryBuilder.tablename(ent) + ' SET ? WHERE id=\'' + entp.id + '\''
     }
     else {
-      entp[field] = ent[field]
+      query = 'INSERT INTO ' + QueryBuilder.tablename(ent) + ' SET ?'
+    }
+
+    if (update) {
+      return done(null, {query: query, operation: 'save/update'})
+    }
+    else {
+      return done(null, {query: query, operation: 'save/insert'})
     }
   })
 
-  if (!_.isEmpty(type)) {
-    entp[SENECA_TYPE_COLUMN] = JSON.stringify(type)
-  }
-  return entp
-}
+  seneca.add({role: actionRole, hook: 'remove'}, function (args, done) {
+    var qent = args.qent
+    var q = args.q
 
+    var query = QueryBuilder.deletestm(qent, q)
+    return done(null, {query: query})
+  })
 
-var makeent = function (ent, row) {
-  if (!row) {
-    return null
-  }
-  var entp
-  var fields = _.keys(row)
-  var senecatype = {}
-
-  if (!_.isUndefined(row[SENECA_TYPE_COLUMN]) && !_.isNull(row[SENECA_TYPE_COLUMN])) {
-    senecatype = JSON.parse(row[SENECA_TYPE_COLUMN])
-  }
-
-  if (!_.isUndefined(ent) && !_.isUndefined(row)) {
-    entp = {}
-    fields.forEach(function (field) {
-      if (SENECA_TYPE_COLUMN !== field) {
-        if (_.isUndefined(senecatype[field])) {
-          entp[field] = row[field]
-        }
-        else if (senecatype[field] === OBJECT_TYPE) {
-          entp[field] = JSON.parse(row[field])
-        }
-        else if (senecatype[field] === ARRAY_TYPE) {
-          entp[field] = JSON.parse(row[field])
-        }
-        else if (senecatype[field] === DATE_TYPE) {
-          entp[field] = new Date(row[field])
-        }
-      }
-    })
-  }
-  return ent.make$(entp)
-}
-
-
-var metaquery = function (qent, q) {
-  var mq = []
-
-  if (q.sort$) {
-    for (var sf in q.sort$) break
-    var sd = q.sort$[sf] < 0 ? 'DESC' : 'ASC'
-    mq.push('ORDER BY ' + sf + ' ' + sd)
-  }
-
-  if (q.limit$) {
-    mq.push('LIMIT ' + (Number(q.limit$) || 0))
-  }
-
-  if (q.skip$) {
-    mq.push('OFFSET ' + (Number(q.skip$) || 0))
-  }
-
-  return mq
-}
-
-
-function makequeryfunc (qent, q, connection) {
-  var qf
-  if (_.isArray(q)) {
-    if (q.native$) {
-      qf = function (cb) {
-        var args = q.concat([cb])
-        connection.query.apply(connection, args)
-      }
-      qf.q = q
-    }
-    else {
-      qf = function (cb) {
-        connection.query(q[0], _.tail(q), cb)
-      }
-      qf.q = {q: q[0], v: _.tail(q)}
-    }
-  }
-  else if (_.isObject(q)) {
-    if (q.native$) {
-      var nq = _.clone(q)
-      delete nq.native$
-      qf = function (cb) {
-        connection.query(nq, cb)
-      }
-      qf.q = nq
-    }
-    else {
-      var query = selectstm(qent, q, connection)
-      qf = function (cb) {
-        connection.query(query, cb)
-      }
-      qf.q = query
-    }
-  }
-  else {
-    qf = function (cb) {
-      connection.query(q, cb)
-    }
-    qf.q = q
-  }
-
-  return qf
-}
-
-
-var deletestm = function (qent, q, connection) {
-  var table = tablename(qent)
-  var params = []
-  var w = whereargs(makeentp(qent), q)
-  var wherestr = ''
-
-  if (!_.isEmpty(w)) {
-    for (var param in w) {
-      params.push(param + ' = ' + connection.escape(w[param]))
-    }
-    wherestr = ' WHERE ' + params.join(' AND ')
-  }
-
-  var limistr = ''
-  if (!q.all$) {
-    limistr = ' LIMIT 1'
-  }
-  return 'DELETE FROM ' + table + wherestr + limistr
+  return {name: store.name, tag: meta.tag}
 }

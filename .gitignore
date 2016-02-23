@@ -20,3 +20,7 @@ npm-debug.log
 README.html
 
 test/dbconfig.mine.js
+
+.idea/
+.settings/
+.vscode/
