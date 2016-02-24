@@ -168,6 +168,15 @@ function whereargs (qent, q) {
   return w
 }
 
+function fixPrepStatement (stm) {
+  var index = 1
+  while (stm.indexOf('?') !== -1) {
+    stm = stm.replace('?', '$' + index)
+    index++
+  }
+  return stm
+}
+
 function selectstm (qent, q) {
   var table = tablename(qent)
   var params = []
@@ -228,6 +237,49 @@ function selectstmPg (qent, q, done) {
   stm.values = values
 
   done(null, stm)
+}
+
+function selectstmOrPg (qent, q) {
+  var stm = {}
+
+  var table = RelationalStore.tablename(qent)
+  var entp = RelationalStore.makeentp(qent)
+
+  var values = []
+  var params = []
+
+  var cnt = 0
+
+  var w = whereargsPg(entp, q.ids)
+
+  var wherestr = ''
+
+  if (!_.isEmpty(w) && w.params.length > 0) {
+    w.params.forEach(function (param) {
+      params.push(RelationalStore.escapeStr(RelationalStore.camelToSnakeCase('id')) + '=$' + (++cnt))
+    })
+
+    w.values.forEach(function (value) {
+      values.push(value)
+    })
+
+    wherestr = ' WHERE ' + params.join(' OR ')
+  }
+
+  // This is required to set the limit$ to be the length of the 'ids' array, so that in situations
+  // when it's not set in the query(q) it won't be applied the default limit$ of 20 records
+  if (!q.limit$) {
+    q.limit$ = q.ids.length
+  }
+
+  var mq = metaqueryPg(qent, q)
+
+  var metastr = ' ' + mq.params.join(' ')
+
+  stm.text = 'SELECT * FROM ' + RelationalStore.escapeStr(table) + wherestr + RelationalStore.escapeStr(metastr)
+  stm.values = values
+
+  return stm
 }
 
 function tablename (entity) {
@@ -381,9 +433,11 @@ function deletestm (qent, q) {
 }
 
 module.exports.fixquery = fixquery
+module.exports.fixPrepStatement = fixPrepStatement
 module.exports.whereargs = whereargs
 module.exports.selectstm = selectstm
 module.exports.selectstmPg = selectstmPg
+module.exports.selectstmOrPg = selectstmOrPg
 module.exports.tablename = tablename
 module.exports.makeentp = makeentp
 module.exports.makeent = makeent

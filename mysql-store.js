@@ -404,8 +404,42 @@ module.exports = function (options) {
     var qent = args.qent
     var q = args.q
 
-    var query = QueryBuilder.makelistquery(qent, q)
-    return done(null, {query: query})
+    buildSelectStatement(q, function (err, query) {
+      return done(err, {query: query})
+    })
+
+    function buildSelectStatement (q, done) {
+      var query
+
+      if (_.isString(q)) {
+        return done(null, q)
+      }
+      else if (_.isArray(q)) {
+        // first element in array should be query, the other being values
+        if (q.length === 0) {
+          var errorDetails = {
+            message: 'Invalid query',
+            query: q
+          }
+          seneca.log.error('Invalid query')
+          return done(errorDetails)
+        }
+        query = {}
+        // query.text = QueryBuilder.fixPrepStatement(q[0])
+        query.text = q[0]
+        query.values = _.clone(q)
+        query.values.splice(0, 1)
+        return done(null, query)
+      }
+      else {
+        if (q.ids) {
+          return done(null, QueryBuilder.selectstmOrPg(qent, q))
+        }
+        else {
+          QueryBuilder.selectstmPg(qent, q, done)
+        }
+      }
+    }
   })
 
   seneca.add({role: actionRole, hook: 'save'}, function (args, done) {
