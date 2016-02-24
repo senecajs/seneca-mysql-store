@@ -348,7 +348,7 @@ module.exports = function (options) {
           if (err) {
             return cb(err)
           }
-          internals.connectionPool.query(query, function (err, result) {
+          execQuery(query, function (err, result) {
             if (err) {
               return cb(err)
             }
@@ -467,7 +467,7 @@ module.exports = function (options) {
     var qent = args.qent
     var q = args.q
 
-    var query = QueryBuilder.deletestm(qent, q)
+    var query = QueryBuilder.deletestmPg(qent, q)
     return done(null, {query: query})
   })
 

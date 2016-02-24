@@ -94,12 +94,12 @@ var buildQueryFromExpressionPg = function (entp, query_parameters, values) {
 
       if (current_value === null) {
         // we can't use the equality on null because NULL != NULL
-        params.push('"' + RelationalStore.escapeStr(RelationalStore.camelToSnakeCase(current_name)) + '" IS NULL')
+        params.push(RelationalStore.escapeStr(RelationalStore.camelToSnakeCase(current_name)) + ' IS NULL')
       }
       else if (current_value instanceof RegExp) {
         var op = (current_value.ignoreCase) ? '~*' : '~'
         values.push(current_value.source)
-        params.push('"' + RelationalStore.escapeStr(RelationalStore.camelToSnakeCase(current_name)) + '"' + op + '?')
+        params.push(RelationalStore.escapeStr(RelationalStore.camelToSnakeCase(current_name)) + op + '?')
       }
       else if (_.isObject(current_value)) {
         var result = parseComplexSelectOperator(current_name, current_value, params)
@@ -248,7 +248,7 @@ function selectstmOrPg (qent, q) {
   var values = []
   var params = []
 
-  var cnt = 0
+  // var cnt = 0
 
   var w = whereargsPg(entp, q.ids)
 
@@ -256,7 +256,7 @@ function selectstmOrPg (qent, q) {
 
   if (!_.isEmpty(w) && w.params.length > 0) {
     w.params.forEach(function (param) {
-      params.push(RelationalStore.escapeStr(RelationalStore.camelToSnakeCase('id')) + '=$' + (++cnt))
+      params.push(RelationalStore.escapeStr(RelationalStore.camelToSnakeCase('id')) + '=')
     })
 
     w.values.forEach(function (value) {
@@ -432,6 +432,48 @@ function deletestm (qent, q) {
   return 'DELETE FROM ' + table + wherestr + limistr
 }
 
+function deletestmPg (qent, q) {
+  var stm = {}
+
+  var table = RelationalStore.tablename(qent)
+  var entp = RelationalStore.makeentp(qent)
+
+  var values = []
+  var params = []
+
+  // var cnt = 0
+
+  var w = whereargsPg(entp, q)
+
+  var wherestr = ''
+
+  if (!_.isEmpty(w) && w.params.length > 0) {
+    for (var i in w.params) {
+      var param = w.params[i]
+      var val = w.values[i]
+
+      if (param.indexOf('$') !== -1) {
+        continue
+      }
+
+      params.push(RelationalStore.escapeStr(RelationalStore.camelToSnakeCase(param)) + '=?')
+      values.push(RelationalStore.escapeStr(val))
+    }
+
+    if (params.length > 0) {
+      wherestr = ' WHERE ' + params.join(' AND ')
+    }
+    else {
+      wherestr = ' '
+    }
+  }
+
+  stm.text = 'DELETE FROM ' + RelationalStore.escapeStr(table) + wherestr
+  stm.values = values
+
+  return stm
+}
+
 module.exports.fixquery = fixquery
 module.exports.fixPrepStatement = fixPrepStatement
 module.exports.whereargs = whereargs
@@ -444,3 +486,4 @@ module.exports.makeent = makeent
 module.exports.metaquery = metaquery
 module.exports.makelistquery = makelistquery
 module.exports.deletestm = deletestm
+module.exports.deletestmPg = deletestmPg
