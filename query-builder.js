@@ -109,7 +109,7 @@ var buildQueryFromExpressionPg = function (entp, query_parameters, values) {
       }
       else {
         values.push(current_value)
-        params.push('"' + RelationalStore.escapeStr(RelationalStore.camelToSnakeCase(current_name)) + '"' + '=' + '?')
+        params.push(RelationalStore.escapeStr(RelationalStore.camelToSnakeCase(current_name)) + '=' + '?')
       }
     }
     return {}
@@ -202,7 +202,6 @@ function selectstmPg (qent, q, done) {
 
   var table = RelationalStore.tablename(qent)
   var entp = RelationalStore.makeentp(qent)
-
 
   var w = whereargsPg(entp, q)
 
