@@ -52,6 +52,7 @@
     "HISTORY.md",
     "LICENSE.txt",
     "mysql-store.js",
+    "query-builder.js",
     "package.json",
     "default_config.json"
   ],

@@ -28,6 +28,11 @@ function whereargs (qent, q) {
   return w
 }
 
+function selectargs (q) {
+    var sa = q.fields$.join(',')
+    return sa
+}
+
 function selectstm (qent, q) {
   var table = tablename(qent)
   var params = []
@@ -44,7 +49,9 @@ function selectstm (qent, q) {
   var mq = metaquery(qent, q)
   var metastr = ' ' + mq.join(' ')
 
-  return 'SELECT * FROM ' + table + wherestr + metastr
+  var selectargs = selectargs(q)
+
+  return 'SELECT ' + selectargs + ' FROM ' + table + wherestr + metastr
 }
 
 function tablename (entity) {
