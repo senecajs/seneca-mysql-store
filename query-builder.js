@@ -29,8 +29,14 @@ function whereargs (qent, q) {
 }
 
 function selectargs (q) {
-    var sa = q.fields$.join(',')
-    return sa
+  var fields = q.fields$
+  var sa
+  if(fields && fields.length > 0) {
+    sa = fields.join(',')
+  } else {
+    sa = '*'
+  }
+  return sa
 }
 
 function selectstm (qent, q) {
@@ -49,9 +55,9 @@ function selectstm (qent, q) {
   var mq = metaquery(qent, q)
   var metastr = ' ' + mq.join(' ')
 
-  var selectargs = selectargs(q)
+  var selectstr = selectargs(q)
 
-  return 'SELECT ' + selectargs + ' FROM ' + table + wherestr + metastr
+  return 'SELECT ' + selectstr + ' FROM ' + table + wherestr + metastr
 }
 
 function tablename (entity) {
