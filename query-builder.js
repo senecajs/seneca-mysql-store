@@ -412,6 +412,59 @@ function makelistquery (qent, q) {
   }
 }
 
+function savestmPg (ent) {
+  var stm = {}
+
+  var table = RelationalStore.tablename(ent)
+  var entp = RelationalStore.makeentp(ent)
+  var fields = _.keys(entp)
+
+  var values = []
+  var params = []
+
+  var cnt = 0
+
+  var escapedFields = []
+  fields.forEach(function (field) {
+    escapedFields.push(RelationalStore.escapeStr(RelationalStore.camelToSnakeCase(field)))
+    values.push(entp[field])
+    params.push('?')
+  })
+
+  stm.text = 'INSERT INTO ' + RelationalStore.escapeStr(table) + ' (' + escapedFields + ') values (' + RelationalStore.escapeStr(params) + ')'
+  stm.values = values
+
+  return stm
+}
+
+function updatestmPg (ent) {
+  var stm = {}
+
+  var table = RelationalStore.tablename(ent)
+  var entp = RelationalStore.makeentp(ent)
+  var fields = _.keys(entp)
+
+  var values = []
+  var params = []
+  var cnt = 0
+
+  fields.forEach(function (field) {
+    if (field.indexOf('$') !== -1) {
+      return
+    }
+
+    if (!_.isUndefined(entp[field])) {
+      values.push(entp[field])
+      params.push(RelationalStore.escapeStr(RelationalStore.camelToSnakeCase(field)) + '=?')
+    }
+  })
+
+  stm.text = 'UPDATE ' + RelationalStore.escapeStr(table) + ' SET ' + params + " WHERE id='" + RelationalStore.escapeStr(ent.id) + "'"
+  stm.values = values
+
+  return stm
+}
+
 function deletestm (qent, q) {
   var table = tablename(qent)
   var params = []
@@ -487,3 +540,5 @@ module.exports.metaquery = metaquery
 module.exports.makelistquery = makelistquery
 module.exports.deletestm = deletestm
 module.exports.deletestmPg = deletestmPg
+module.exports.savestmPg = savestmPg
+module.exports.updatestmPg = updatestmPg
