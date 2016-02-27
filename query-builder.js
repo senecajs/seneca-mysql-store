@@ -31,11 +31,14 @@ function whereargs (qent, q) {
 function selectargs (q) {
   var fields = q.fields$
   var sa
-  if(fields && fields.length > 0) {
+
+  if (fields && fields.length > 0) {
     sa = fields.join(',')
-  } else {
+  }
+  else {
     sa = '*'
   }
+
   return sa
 }
 

@@ -3,7 +3,7 @@
 module.exports = {
   name: 'senecatest',
   host: 'localhost',
-  user: 'senecatest',
-  password: 'senecatest',
+  user: 'root',
+  password: '',
   port: 3306
 }
