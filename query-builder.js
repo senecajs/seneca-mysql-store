@@ -2,14 +2,10 @@
 
 var _ = require('lodash')
 var MySQL = require('mysql')
+var Knex = require('knex')({client: 'mysql'})
 
 var RelationalStore = require('./lib/relational-util')
 var OpParser = require('./lib/operator_parser')
-
-var OBJECT_TYPE = 'o'
-var ARRAY_TYPE = 'a'
-var DATE_TYPE = 'd'
-var SENECA_TYPE_COLUMN = 'seneca'
 
 var buildQueryFromExpressionPg = function (entp, query_parameters, values) {
   var params = []
@@ -94,12 +90,12 @@ var buildQueryFromExpressionPg = function (entp, query_parameters, values) {
 
       if (current_value === null) {
         // we can't use the equality on null because NULL != NULL
-        params.push(RelationalStore.escapeStr(RelationalStore.camelToSnakeCase(current_name)) + ' IS NULL')
+        params.push('`' + RelationalStore.escapeStr(RelationalStore.camelToSnakeCase(current_name)) + '` IS NULL')
       }
       else if (current_value instanceof RegExp) {
         var op = (current_value.ignoreCase) ? '~*' : '~'
         values.push(current_value.source)
-        params.push(RelationalStore.escapeStr(RelationalStore.camelToSnakeCase(current_name)) + op + '?')
+        params.push('`' + RelationalStore.escapeStr(RelationalStore.camelToSnakeCase(current_name)) + '`' + op + '?')
       }
       else if (_.isObject(current_value)) {
         var result = parseComplexSelectOperator(current_name, current_value, params)
@@ -109,7 +105,7 @@ var buildQueryFromExpressionPg = function (entp, query_parameters, values) {
       }
       else {
         values.push(current_value)
-        params.push(RelationalStore.escapeStr(RelationalStore.camelToSnakeCase(current_name)) + '=' + '?')
+        params.push('`' + RelationalStore.escapeStr(RelationalStore.camelToSnakeCase(current_name)) + '`=' + '?')
       }
     }
     return {}
@@ -180,7 +176,7 @@ function fixPrepStatement (stm) {
 function selectstm (qent, q) {
   var table = tablename(qent)
   var params = []
-  var w = whereargs(makeentp(qent), q)
+  var w = whereargs(RelationalStore.makeentp(qent), q)
   var wherestr = ''
 
   if (!_.isEmpty(w)) {
@@ -256,7 +252,7 @@ function selectstmOrPg (qent, q) {
 
   if (!_.isEmpty(w) && w.params.length > 0) {
     w.params.forEach(function (param) {
-      params.push(RelationalStore.escapeStr(RelationalStore.camelToSnakeCase('id')) + '=')
+      params.push('`' + RelationalStore.escapeStr(RelationalStore.camelToSnakeCase('id')) + '`=')
     })
 
     w.values.forEach(function (value) {
@@ -285,67 +281,6 @@ function selectstmOrPg (qent, q) {
 function tablename (entity) {
   var canon = entity.canon$({object: true})
   return (canon.base ? canon.base + '_' : '') + canon.name
-}
-
-function makeentp (ent) {
-  var entp = {}
-  var fields = ent.fields$()
-  var type = {}
-
-  fields.forEach(function (field) {
-    if (_.isArray(ent[field])) {
-      type[field] = ARRAY_TYPE
-    }
-    else if (!_.isDate(ent[field]) && _.isObject(ent[field])) {
-      type[field] = OBJECT_TYPE
-    }
-
-    if (!_.isDate(ent[field]) && _.isObject(ent[field])) {
-      entp[field] = JSON.stringify(ent[field])
-    }
-    else {
-      entp[field] = ent[field]
-    }
-  })
-
-  if (!_.isEmpty(type)) {
-    entp[SENECA_TYPE_COLUMN] = JSON.stringify(type)
-  }
-  return entp
-}
-
-function makeent (ent, row) {
-  if (!row) {
-    return null
-  }
-  var entp
-  var fields = _.keys(row)
-  var senecatype = {}
-
-  if (!_.isUndefined(row[SENECA_TYPE_COLUMN]) && !_.isNull(row[SENECA_TYPE_COLUMN])) {
-    senecatype = JSON.parse(row[SENECA_TYPE_COLUMN])
-  }
-
-  if (!_.isUndefined(ent) && !_.isUndefined(row)) {
-    entp = {}
-    fields.forEach(function (field) {
-      if (SENECA_TYPE_COLUMN !== field) {
-        if (_.isUndefined(senecatype[field])) {
-          entp[field] = row[field]
-        }
-        else if (senecatype[field] === OBJECT_TYPE) {
-          entp[field] = JSON.parse(row[field])
-        }
-        else if (senecatype[field] === ARRAY_TYPE) {
-          entp[field] = JSON.parse(row[field])
-        }
-        else if (senecatype[field] === DATE_TYPE) {
-          entp[field] = new Date(row[field])
-        }
-      }
-    })
-  }
-  return ent.make$(entp)
 }
 
 function metaquery (qent, q) {
@@ -417,22 +352,9 @@ function savestmPg (ent) {
 
   var table = RelationalStore.tablename(ent)
   var entp = RelationalStore.makeentp(ent)
-  var fields = _.keys(entp)
 
-  var values = []
-  var params = []
-
-  var cnt = 0
-
-  var escapedFields = []
-  fields.forEach(function (field) {
-    escapedFields.push(RelationalStore.escapeStr(RelationalStore.camelToSnakeCase(field)))
-    values.push(entp[field])
-    params.push('?')
-  })
-
-  stm.text = 'INSERT INTO ' + RelationalStore.escapeStr(table) + ' (' + escapedFields + ') values (' + RelationalStore.escapeStr(params) + ')'
-  stm.values = values
+  stm.text = Knex(table).insert(entp).toString()
+  stm.values = []
 
   return stm
 }
@@ -446,7 +368,7 @@ function updatestmPg (ent) {
 
   var values = []
   var params = []
-  var cnt = 0
+  // var cnt = 0
 
   fields.forEach(function (field) {
     if (field.indexOf('$') !== -1) {
@@ -468,7 +390,7 @@ function updatestmPg (ent) {
 function deletestm (qent, q) {
   var table = tablename(qent)
   var params = []
-  var w = whereargs(makeentp(qent), q)
+  var w = whereargs(RelationalStore.makeentp(qent), q)
   var wherestr = ''
 
   if (!_.isEmpty(w)) {
@@ -509,7 +431,7 @@ function deletestmPg (qent, q) {
         continue
       }
 
-      params.push(RelationalStore.escapeStr(RelationalStore.camelToSnakeCase(param)) + '=?')
+      params.push('`' + RelationalStore.escapeStr(RelationalStore.camelToSnakeCase(param)) + '`=?')
       values.push(RelationalStore.escapeStr(val))
     }
 
@@ -534,8 +456,6 @@ module.exports.selectstm = selectstm
 module.exports.selectstmPg = selectstmPg
 module.exports.selectstmOrPg = selectstmOrPg
 module.exports.tablename = tablename
-module.exports.makeentp = makeentp
-module.exports.makeent = makeent
 module.exports.metaquery = metaquery
 module.exports.makelistquery = makelistquery
 module.exports.deletestm = deletestm

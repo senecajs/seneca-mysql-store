@@ -6,6 +6,7 @@ var MySQL = require('mysql')
 var Uuid = require('node-uuid')
 var DefaultConfig = require('./default_config.json')
 var QueryBuilder = require('./query-builder')
+var RelationalStore = require('./lib/relational-util')
 
 var Eraro = require('eraro')({
   package: 'mysql'
@@ -182,9 +183,6 @@ module.exports = function (options) {
       Assert(done)
       Assert(args.ent)
 
-      var ent = args.ent
-      var update = !!ent.id
-
       var seneca = this
 
       seneca.act({role: actionRole, hook: 'save', target: store.name}, args, function (err, queryObj) {
@@ -199,7 +197,7 @@ module.exports = function (options) {
         execQuery(query, function (err, res) {
           if (err) {
             seneca.log.error(query.text, query.values, err)
-            return done({code: operation, tag: args.tag$, store: store.name, query: query, error: err})
+            return done(err, {code: operation, tag: args.tag$, store: store.name, query: query, error: err})
           }
 
           seneca.log(args.tag$, operation, args.ent)
@@ -238,7 +236,7 @@ module.exports = function (options) {
             return done(err)
           }
 
-          var ent = QueryBuilder.makeent(qent, res[0])
+          var ent = RelationalStore.makeent(qent, res[0])
 
           seneca.log(args.tag$, 'load', ent)
 
@@ -285,7 +283,7 @@ module.exports = function (options) {
 
           var list = []
           results.forEach(function (row) {
-            var ent = QueryBuilder.makeent(qent, row)
+            var ent = RelationalStore.makeent(qent, row)
             list.push(ent)
           })
           done(null, list)

@@ -23,8 +23,8 @@ CREATE TABLE moon_bar (
   wen TIMESTAMP,
   mark VARCHAR(255),
   `dec` REAL,
-  arr TEXT,
-  obj TEXT,
+  arr JSON,
+  obj JSON,
   seneca VARCHAR(125));
 
 CREATE TABLE product (id VARCHAR(36), name VARCHAR(255), price INT);
@@ -34,4 +34,3 @@ CREATE TABLE incremental (
   p1 VARCHAR(255),
   PRIMARY KEY (id)
 );
-
