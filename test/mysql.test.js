@@ -27,11 +27,11 @@ else {
 }
 
 var incrementConfig = {
-  map: {'-/-/incremental': '*'},
-  auto_increment: true
+  // map: {'-/-/incremental': '*'},
+  // auto_increment: true
 }
 
-var mysqlConfig = _.assign({}, dbConfig, incrementConfig)
+var storeConfig = _.assign({}, dbConfig, incrementConfig)
 
 var si = Seneca({
   default_plugins: {
@@ -41,7 +41,7 @@ var si = Seneca({
 
 describe('MySQL suite tests ', function () {
   before({}, function (done) {
-    si.use(require('../mysql-store.js'), dbConfig)
+    si.use(require('../mysql-store.js'), storeConfig)
     si.ready(done)
   })
 
