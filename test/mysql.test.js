@@ -11,6 +11,7 @@ var _ = require('lodash')
 var Seneca = require('seneca')
 var Shared = require('seneca-store-test')
 var Extra = require('./mysql.ext.test.js')
+var Autoincrement = require('./mysql.autoincrement.test.js')
 var Fs = require('fs')
 
 var Lab = require('lab')
@@ -26,12 +27,6 @@ else {
   dbConfig = require('./dbconfig.example')
 }
 
-var incrementConfig = {
-  // map: {'-/-/incremental': '*'},
-  // auto_increment: true
-}
-
-var storeConfig = _.assign({}, dbConfig, incrementConfig)
 
 var si = Seneca({
   default_plugins: {
@@ -41,7 +36,7 @@ var si = Seneca({
 
 describe('MySQL suite tests ', function () {
   before({}, function (done) {
-    si.use(require('../mysql-store.js'), storeConfig)
+    si.use(require('../mysql-store.js'), dbConfig)
     si.ready(done)
   })
 
@@ -67,6 +62,29 @@ describe('MySQL suite tests ', function () {
 
   Extra.extendTest({
     seneca: si,
+    script: lab
+  })
+})
+
+var incrementConfig = _.assign({}, dbConfig, {
+  map: {'-/-/incremental': '*'},
+  auto_increment: true
+})
+
+var si2 = Seneca({
+  default_plugins: {
+    'mem-store': false
+  }
+})
+
+describe('MySQL autoincrement tests ', function () {
+  before({}, function (done) {
+    si2.use(require('../mysql-store.js'), incrementConfig)
+    si2.ready(done)
+  })
+
+  Autoincrement.autoincrementTest({
+    seneca: si2,
     script: lab
   })
 })
