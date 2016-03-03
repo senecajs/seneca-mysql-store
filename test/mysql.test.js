@@ -15,7 +15,7 @@ var Fs = require('fs')
 
 var Lab = require('lab')
 var lab = exports.lab = Lab.script()
-
+var before = lab.before
 var describe = lab.describe
 
 var dbConfig
@@ -26,17 +26,25 @@ else {
   dbConfig = require('./dbconfig.example')
 }
 
-var incrementConfig = _.assign(
-  {
-    map: { '-/-/incremental': '*' },
-    auto_increment: true
-  }, dbConfig)
+var incrementConfig = {
+  map: {'-/-/incremental': '*'},
+  auto_increment: true
+}
 
-var si = Seneca()
-si.use(require('..'), dbConfig)
-si.use(require('..'), incrementConfig)
+var mysqlConfig = _.assign({}, dbConfig, incrementConfig)
 
-describe('MySQL Test', function () {
+var si = Seneca({
+  default_plugins: {
+    'mem-store': false
+  }
+})
+
+describe('MySQL suite tests ', function () {
+  before({}, function (done) {
+    si.use(require('../mysql-store.js'), dbConfig)
+    si.ready(done)
+  })
+
   Shared.basictest({
     seneca: si,
     script: lab
