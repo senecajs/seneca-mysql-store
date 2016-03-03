@@ -200,6 +200,10 @@ module.exports = function (options) {
             return done(err, {code: operation, tag: args.tag$, store: store.name, query: query, error: err})
           }
 
+          if (!!args.ent && internals.opts.auto_increment && res.insertId) {
+            args.ent.id = res.insertId
+          }
+
           seneca.log(args.tag$, operation, args.ent)
           return done(null, args.ent)
         })
@@ -434,6 +438,11 @@ module.exports = function (options) {
 
     if (ent.id$) {
       ent.id = ent.id$
+      query = QueryBuilder.savestmPg(ent)
+      return done(null, {query: query, operation: 'save'})
+    }
+
+    if (internals.opts.auto_increment) {
       query = QueryBuilder.savestmPg(ent)
       return done(null, {query: query, operation: 'save'})
     }
