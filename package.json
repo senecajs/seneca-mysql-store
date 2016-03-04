@@ -45,8 +45,7 @@
     "eraro": "0.4.1",
     "lodash": "4.3.0",
     "mysql": "2.10.2",
-    "node-uuid": "1.4.7",
-    "knex": "0.10.0"
+    "node-uuid": "1.4.7"
   },
   "files": [
     "README.md",

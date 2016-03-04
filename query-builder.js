@@ -1,9 +1,7 @@
 'use strict'
 
-var _ = require('lodash')
-var Knex = require('knex')({client: 'mysql'})
-
 var RelationalStore = require('./lib/relational-util')
+var _ = require('lodash')
 var OpParser = require('./lib/operator_parser')
 
 var buildQueryFromExpression = function (entp, query_parameters, values) {
@@ -157,9 +155,22 @@ function savestm (ent) {
 
   var table = RelationalStore.tablename(ent)
   var entp = RelationalStore.makeentp(ent)
+  var fields = _.keys(entp)
 
-  stm.text = Knex(table).insert(entp).toString()
-  stm.values = []
+  var values = []
+  var params = []
+
+  // var cnt = 0
+
+  var escapedFields = []
+  fields.forEach(function (field) {
+    escapedFields.push('`' + RelationalStore.escapeStr(RelationalStore.camelToSnakeCase(field)) + '`')
+    values.push(entp[field])
+    params.push('?')
+  })
+
+  stm.text = 'INSERT INTO ' + RelationalStore.escapeStr(table) + ' (' + escapedFields + ') values (' + RelationalStore.escapeStr(params) + ')'
+  stm.values = values
 
   return stm
 }
