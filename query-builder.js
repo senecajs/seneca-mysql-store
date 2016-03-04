@@ -1,7 +1,6 @@
 'use strict'
 
 var _ = require('lodash')
-var MySQL = require('mysql')
 var Knex = require('knex')({client: 'mysql'})
 
 var RelationalStore = require('./lib/relational-util')
@@ -126,16 +125,6 @@ var buildQueryFromExpressionPg = function (entp, query_parameters, values) {
   }
 }
 
-function fixquery (qent, q) {
-  var qq = {}
-  for (var qp in q) {
-    if (!qp.match(/\$$/)) {
-      qq[qp] = q[qp]
-    }
-  }
-  return qq
-}
-
 function whereargsPg (entp, q) {
   var w = {}
 
@@ -154,16 +143,6 @@ function whereargsPg (entp, q) {
   return w
 }
 
-function whereargs (qent, q) {
-  var w = {}
-  var qok = fixquery(qent, q)
-
-  for (var p in qok) {
-    w[p] = qok[p]
-  }
-  return w
-}
-
 function fixPrepStatement (stm) {
   var index = 1
   while (stm.indexOf('?') !== -1) {
@@ -173,23 +152,86 @@ function fixPrepStatement (stm) {
   return stm
 }
 
-function selectstm (qent, q) {
-  var table = tablename(qent)
+function savestmPg (ent) {
+  var stm = {}
+
+  var table = RelationalStore.tablename(ent)
+  var entp = RelationalStore.makeentp(ent)
+
+  stm.text = Knex(table).insert(entp).toString()
+  stm.values = []
+
+  return stm
+}
+
+function updatestmPg (ent) {
+  var stm = {}
+
+  var table = RelationalStore.tablename(ent)
+  var entp = RelationalStore.makeentp(ent)
+  var fields = _.keys(entp)
+
+  var values = []
   var params = []
-  var w = whereargs(RelationalStore.makeentp(qent), q)
+  // var cnt = 0
+
+  fields.forEach(function (field) {
+    if (field.indexOf('$') !== -1) {
+      return
+    }
+
+    if (!_.isUndefined(entp[field])) {
+      values.push(entp[field])
+      params.push(RelationalStore.escapeStr(RelationalStore.camelToSnakeCase(field)) + '=?')
+    }
+  })
+
+  stm.text = 'UPDATE ' + RelationalStore.escapeStr(table) + ' SET ' + params + " WHERE id='" + RelationalStore.escapeStr(ent.id) + "'"
+  stm.values = values
+
+  return stm
+}
+
+function deletestmPg (qent, q) {
+  var stm = {}
+
+  var table = RelationalStore.tablename(qent)
+  var entp = RelationalStore.makeentp(qent)
+
+  var values = []
+  var params = []
+
+  // var cnt = 0
+
+  var w = whereargsPg(entp, q)
+
   var wherestr = ''
 
-  if (!_.isEmpty(w)) {
-    for (var param in w) {
-      params.push(param + ' = ' + MySQL.escape(w[param]))
+  if (!_.isEmpty(w) && w.params.length > 0) {
+    for (var i in w.params) {
+      var param = w.params[i]
+      var val = w.values[i]
+
+      if (param.indexOf('$') !== -1) {
+        continue
+      }
+
+      params.push('`' + RelationalStore.escapeStr(RelationalStore.camelToSnakeCase(param)) + '`=?')
+      values.push(RelationalStore.escapeStr(val))
     }
-    wherestr = ' WHERE ' + params.join(' AND ')
+
+    if (params.length > 0) {
+      wherestr = ' WHERE ' + params.join(' AND ')
+    }
+    else {
+      wherestr = ' '
+    }
   }
 
-  var mq = metaquery(qent, q)
-  var metastr = ' ' + mq.join(' ')
+  stm.text = 'DELETE FROM ' + RelationalStore.escapeStr(table) + wherestr
+  stm.values = values
 
-  return 'SELECT * FROM ' + table + wherestr + metastr
+  return stm
 }
 
 function selectstmPg (qent, q, done) {
@@ -278,31 +320,6 @@ function selectstmOrPg (qent, q) {
   return stm
 }
 
-function tablename (entity) {
-  var canon = entity.canon$({object: true})
-  return (canon.base ? canon.base + '_' : '') + canon.name
-}
-
-function metaquery (qent, q) {
-  var mq = []
-
-  if (q.sort$) {
-    for (var sf in q.sort$) break
-    var sd = q.sort$[sf] < 0 ? 'DESC' : 'ASC'
-    mq.push('ORDER BY ' + sf + ' ' + sd)
-  }
-
-  if (q.limit$) {
-    mq.push('LIMIT ' + (Number(q.limit$) || 0))
-  }
-
-  if (q.skip$) {
-    mq.push('OFFSET ' + (Number(q.skip$) || 0))
-  }
-
-  return mq
-}
-
 function metaqueryPg (qent, q) {
   var mq = {}
 
@@ -326,139 +343,9 @@ function metaqueryPg (qent, q) {
   return mq
 }
 
-function makelistquery (qent, q) {
-  var query = {}
-  var qf = q
-  if (q.native$) {
-    qf = q.native$
-  }
-
-  if (_.isArray(qf)) {
-    query.text = qf[0]
-    query.values = _.clone(qf)
-    query.values.splice(0, 1)
-    return query
-  }
-  else if (_.isObject(qf)) {
-    return selectstm(qent, qf)
-  }
-  else {
-    return qf
-  }
-}
-
-function savestmPg (ent) {
-  var stm = {}
-
-  var table = RelationalStore.tablename(ent)
-  var entp = RelationalStore.makeentp(ent)
-
-  stm.text = Knex(table).insert(entp).toString()
-  stm.values = []
-
-  return stm
-}
-
-function updatestmPg (ent) {
-  var stm = {}
-
-  var table = RelationalStore.tablename(ent)
-  var entp = RelationalStore.makeentp(ent)
-  var fields = _.keys(entp)
-
-  var values = []
-  var params = []
-  // var cnt = 0
-
-  fields.forEach(function (field) {
-    if (field.indexOf('$') !== -1) {
-      return
-    }
-
-    if (!_.isUndefined(entp[field])) {
-      values.push(entp[field])
-      params.push(RelationalStore.escapeStr(RelationalStore.camelToSnakeCase(field)) + '=?')
-    }
-  })
-
-  stm.text = 'UPDATE ' + RelationalStore.escapeStr(table) + ' SET ' + params + " WHERE id='" + RelationalStore.escapeStr(ent.id) + "'"
-  stm.values = values
-
-  return stm
-}
-
-function deletestm (qent, q) {
-  var table = tablename(qent)
-  var params = []
-  var w = whereargs(RelationalStore.makeentp(qent), q)
-  var wherestr = ''
-
-  if (!_.isEmpty(w)) {
-    for (var param in w) {
-      params.push(param + ' = ' + MySQL.escape(w[param]))
-    }
-    wherestr = ' WHERE ' + params.join(' AND ')
-  }
-
-  var limistr = ''
-  if (!q.all$) {
-    limistr = ' LIMIT 1'
-  }
-  return 'DELETE FROM ' + table + wherestr + limistr
-}
-
-function deletestmPg (qent, q) {
-  var stm = {}
-
-  var table = RelationalStore.tablename(qent)
-  var entp = RelationalStore.makeentp(qent)
-
-  var values = []
-  var params = []
-
-  // var cnt = 0
-
-  var w = whereargsPg(entp, q)
-
-  var wherestr = ''
-
-  if (!_.isEmpty(w) && w.params.length > 0) {
-    for (var i in w.params) {
-      var param = w.params[i]
-      var val = w.values[i]
-
-      if (param.indexOf('$') !== -1) {
-        continue
-      }
-
-      params.push('`' + RelationalStore.escapeStr(RelationalStore.camelToSnakeCase(param)) + '`=?')
-      values.push(RelationalStore.escapeStr(val))
-    }
-
-    if (params.length > 0) {
-      wherestr = ' WHERE ' + params.join(' AND ')
-    }
-    else {
-      wherestr = ' '
-    }
-  }
-
-  stm.text = 'DELETE FROM ' + RelationalStore.escapeStr(table) + wherestr
-  stm.values = values
-
-  return stm
-}
-
-module.exports.fixquery = fixquery
 module.exports.fixPrepStatement = fixPrepStatement
-module.exports.whereargs = whereargs
-module.exports.selectstm = selectstm
 module.exports.selectstmPg = selectstmPg
 module.exports.selectstmOrPg = selectstmOrPg
-module.exports.tablename = tablename
-module.exports.metaquery = metaquery
-module.exports.makelistquery = makelistquery
-module.exports.deletestm = deletestm
 module.exports.deletestmPg = deletestmPg
 module.exports.savestmPg = savestmPg
 module.exports.updatestmPg = updatestmPg
