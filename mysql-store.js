@@ -379,7 +379,7 @@ module.exports = function (options) {
     var qent = args.qent
     q.limit$ = 1
 
-    QueryBuilder.selectstmPg(qent, q, function (err, query) {
+    QueryBuilder.selectstm(qent, q, function (err, query) {
       return done(err, {query: query})
     })
   })
@@ -417,10 +417,10 @@ module.exports = function (options) {
       }
       else {
         if (q.ids) {
-          return done(null, QueryBuilder.selectstmOrPg(qent, q))
+          return done(null, QueryBuilder.selectstmOr(qent, q))
         }
         else {
-          QueryBuilder.selectstmPg(qent, q, done)
+          QueryBuilder.selectstm(qent, q, done)
         }
       }
     }
@@ -432,18 +432,18 @@ module.exports = function (options) {
     var query
 
     if (update) {
-      query = QueryBuilder.updatestmPg(ent)
+      query = QueryBuilder.updatestm(ent)
       return done(null, {query: query, operation: 'update'})
     }
 
     if (ent.id$) {
       ent.id = ent.id$
-      query = QueryBuilder.savestmPg(ent)
+      query = QueryBuilder.savestm(ent)
       return done(null, {query: query, operation: 'save'})
     }
 
     if (internals.opts.auto_increment) {
-      query = QueryBuilder.savestmPg(ent)
+      query = QueryBuilder.savestm(ent)
       return done(null, {query: query, operation: 'save'})
     }
 
@@ -453,7 +453,7 @@ module.exports = function (options) {
         return done(err)
       }
       ent.id = result.id
-      query = QueryBuilder.savestmPg(ent)
+      query = QueryBuilder.savestm(ent)
       return done(null, {query: query, operation: 'save'})
     })
   })
@@ -462,7 +462,7 @@ module.exports = function (options) {
     var qent = args.qent
     var q = args.q
 
-    var query = QueryBuilder.deletestmPg(qent, q)
+    var query = QueryBuilder.deletestm(qent, q)
     return done(null, {query: query})
   })
 

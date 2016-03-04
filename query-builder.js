@@ -6,7 +6,7 @@ var Knex = require('knex')({client: 'mysql'})
 var RelationalStore = require('./lib/relational-util')
 var OpParser = require('./lib/operator_parser')
 
-var buildQueryFromExpressionPg = function (entp, query_parameters, values) {
+var buildQueryFromExpression = function (entp, query_parameters, values) {
   var params = []
   values = values || []
 
@@ -34,8 +34,8 @@ var buildQueryFromExpressionPg = function (entp, query_parameters, values) {
 
     var results = []
     for (var i in current_value) {
-      var w = whereargsPg(entp, current_value[i])
-      var current_result = buildQueryFromExpressionPg(entp, w, values)
+      var w = whereargs(entp, current_value[i])
+      var current_result = buildQueryFromExpression(entp, w, values)
       values = current_result.values
       results.push(current_result)
     }
@@ -58,8 +58,8 @@ var buildQueryFromExpressionPg = function (entp, query_parameters, values) {
 
     var results = []
     for (var i in current_value) {
-      var w = whereargsPg(entp, current_value[i])
-      var current_result = buildQueryFromExpressionPg(entp, w, values)
+      var w = whereargs(entp, current_value[i])
+      var current_result = buildQueryFromExpression(entp, w, values)
       values = current_result.values
       results.push(current_result)
     }
@@ -125,7 +125,7 @@ var buildQueryFromExpressionPg = function (entp, query_parameters, values) {
   }
 }
 
-function whereargsPg (entp, q) {
+function whereargs (entp, q) {
   var w = {}
 
   w.params = []
@@ -152,7 +152,7 @@ function fixPrepStatement (stm) {
   return stm
 }
 
-function savestmPg (ent) {
+function savestm (ent) {
   var stm = {}
 
   var table = RelationalStore.tablename(ent)
@@ -164,7 +164,7 @@ function savestmPg (ent) {
   return stm
 }
 
-function updatestmPg (ent) {
+function updatestm (ent) {
   var stm = {}
 
   var table = RelationalStore.tablename(ent)
@@ -192,7 +192,7 @@ function updatestmPg (ent) {
   return stm
 }
 
-function deletestmPg (qent, q) {
+function deletestm (qent, q) {
   var stm = {}
 
   var table = RelationalStore.tablename(qent)
@@ -203,7 +203,7 @@ function deletestmPg (qent, q) {
 
   // var cnt = 0
 
-  var w = whereargsPg(entp, q)
+  var w = whereargs(entp, q)
 
   var wherestr = ''
 
@@ -234,7 +234,7 @@ function deletestmPg (qent, q) {
   return stm
 }
 
-function selectstmPg (qent, q, done) {
+function selectstm (qent, q, done) {
   var specialOps = ['fields$']
   var specialOpsVal = {}
 
@@ -250,9 +250,9 @@ function selectstmPg (qent, q, done) {
   var table = RelationalStore.tablename(qent)
   var entp = RelationalStore.makeentp(qent)
 
-  var w = whereargsPg(entp, q)
+  var w = whereargs(entp, q)
 
-  var response = buildQueryFromExpressionPg(entp, w)
+  var response = buildQueryFromExpression(entp, w)
   if (response.err) {
     return done(response.err)
   }
@@ -261,7 +261,7 @@ function selectstmPg (qent, q, done) {
 
   var values = response.values
 
-  var mq = metaqueryPg(qent, q)
+  var mq = metaquery(qent, q)
 
   var metastr = ' ' + mq.params.join(' ')
 
@@ -277,7 +277,7 @@ function selectstmPg (qent, q, done) {
   done(null, stm)
 }
 
-function selectstmOrPg (qent, q) {
+function selectstmOr (qent, q) {
   var stm = {}
 
   var table = RelationalStore.tablename(qent)
@@ -288,7 +288,7 @@ function selectstmOrPg (qent, q) {
 
   // var cnt = 0
 
-  var w = whereargsPg(entp, q.ids)
+  var w = whereargs(entp, q.ids)
 
   var wherestr = ''
 
@@ -310,7 +310,7 @@ function selectstmOrPg (qent, q) {
     q.limit$ = q.ids.length
   }
 
-  var mq = metaqueryPg(qent, q)
+  var mq = metaquery(qent, q)
 
   var metastr = ' ' + mq.params.join(' ')
 
@@ -320,7 +320,7 @@ function selectstmOrPg (qent, q) {
   return stm
 }
 
-function metaqueryPg (qent, q) {
+function metaquery (qent, q) {
   var mq = {}
 
   mq.params = []
@@ -344,8 +344,8 @@ function metaqueryPg (qent, q) {
 }
 
 module.exports.fixPrepStatement = fixPrepStatement
-module.exports.selectstmPg = selectstmPg
-module.exports.selectstmOrPg = selectstmOrPg
-module.exports.deletestmPg = deletestmPg
-module.exports.savestmPg = savestmPg
-module.exports.updatestmPg = updatestmPg
+module.exports.selectstm = selectstm
+module.exports.selectstmOr = selectstmOr
+module.exports.deletestm = deletestm
+module.exports.savestm = savestm
+module.exports.updatestm = updatestm
