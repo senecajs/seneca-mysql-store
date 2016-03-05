@@ -138,24 +138,6 @@ function extendTest (settings) {
               Assert.isNotNull(err)
               next()
             })
-          },
-
-          allowAutoIncrementId: function (next) {
-            var inc = si.make('incremental')
-            inc.p1 = 'v1'
-
-            inc.save$(function (err, inc1) {
-              Assert.isNull(err)
-              Assert.isNotNull(inc1.id)
-
-              inc.load$({id: inc1.id}, function (err, inc2) {
-                Assert.isNull(err)
-                Assert.isNotNull(inc2)
-                Assert.equal(inc2.id, inc1.id)
-                Assert.equal(inc2.p1, 'v1')
-                next()
-              })
-            })
           }
         },
         function (err, out) {

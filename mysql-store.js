@@ -3,9 +3,10 @@
 var Assert = require('assert')
 var _ = require('lodash')
 var MySQL = require('mysql')
-var UUID = require('node-uuid')
+var Uuid = require('node-uuid')
 var DefaultConfig = require('./default_config.json')
 var QueryBuilder = require('./query-builder')
+var RelationalStore = require('./lib/relational-util')
 
 var Eraro = require('eraro')({
   package: 'mysql'
@@ -140,6 +141,15 @@ module.exports = function (options) {
     })
   }
 
+  function execQuery (query, done) {
+    if (_.isString(query)) {
+      internals.connectionPool.query(query, done)
+    }
+    else {
+      internals.connectionPool.query(query.text, query.values, done)
+    }
+  }
+
   // The store interface returned to seneca
   var store = {
     name: storeName,
@@ -173,46 +183,29 @@ module.exports = function (options) {
       Assert(done)
       Assert(args.ent)
 
-      var ent = args.ent
-      var update = !!ent.id
+      var seneca = this
 
       seneca.act({role: actionRole, hook: 'save', target: store.name}, args, function (err, queryObj) {
+        var query = queryObj.query
+        var operation = queryObj.operation
+
         if (err) {
           seneca.log.error('MySQL save error', err)
           return done(err, {code: operation, tag: args.tag$, store: store.name, query: query, error: err})
         }
 
-        if (!ent.id) {
-          if (ent.id$) {
-            ent.id = ent.id$
-          }
-          else {
-            if (!internals.opts.auto_increment) {
-              ent.id = UUID()
-            }
-          }
-        }
-
-        var entp = QueryBuilder.makeentp(ent)
-
-        var query = queryObj.query
-        var operation = queryObj.operation
-
-        internals.connectionPool.query(query, entp, function (err, result) {
+        execQuery(query, function (err, res) {
           if (err) {
-            seneca.log(args.tag$, operation, err, query)
-            return done(err)
+            seneca.log.error(query.text, query.values, err)
+            return done(err, {code: operation, tag: args.tag$, store: store.name, query: query, error: err})
           }
 
-          seneca.log(args.tag$, operation, err, result, query)
-
-          if (!update) {
-            if (internals.opts.auto_increment && result.insertId) {
-              ent.id = result.insertId
-            }
+          if (!!args.ent && internals.opts.auto_increment && res.insertId) {
+            args.ent.id = res.insertId
           }
 
-          done(null, ent)
+          seneca.log(args.tag$, operation, args.ent)
+          return done(null, args.ent)
         })
       })
     },
@@ -241,13 +234,13 @@ module.exports = function (options) {
           return done(err, {code: 'load', tag: args.tag$, store: store.name, query: query, error: err})
         }
 
-        internals.connectionPool.query(query, function (err, res, fields) {
+        execQuery(query, function (err, res, fields) {
           if (err) {
             seneca.log(args.tag$, 'load', err)
             return done(err)
           }
 
-          var ent = QueryBuilder.makeent(qent, res[0])
+          var ent = RelationalStore.makeent(qent, res[0])
 
           seneca.log(args.tag$, 'load', ent)
 
@@ -277,15 +270,6 @@ module.exports = function (options) {
       Assert(args.qent)
       Assert(args.q)
 
-      function execQuery (query, done) {
-        if (_.isString(query)) {
-          internals.connectionPool.query(query, done)
-        }
-        else {
-          internals.connectionPool.query(query.text, query.values, done)
-        }
-      }
-
       var qent = args.qent
 
       seneca.act({role: actionRole, hook: 'list', target: store.name}, args, function (err, queryObj) {
@@ -303,7 +287,7 @@ module.exports = function (options) {
 
           var list = []
           results.forEach(function (row) {
-            var ent = QueryBuilder.makeent(qent, row)
+            var ent = RelationalStore.makeent(qent, row)
             list.push(ent)
           })
           done(null, list)
@@ -348,7 +332,7 @@ module.exports = function (options) {
           if (err) {
             return cb(err)
           }
-          internals.connectionPool.query(query, function (err, result) {
+          execQuery(query, function (err, result) {
             if (err) {
               return cb(err)
             }
@@ -395,37 +379,83 @@ module.exports = function (options) {
     var qent = args.qent
     q.limit$ = 1
 
-    var query = QueryBuilder.selectstm(qent, q)
-    return done(null, {query: query})
+    QueryBuilder.selectstm(qent, q, function (err, query) {
+      return done(err, {query: query})
+    })
   })
 
   seneca.add({role: actionRole, hook: 'list'}, function (args, done) {
     var qent = args.qent
     var q = args.q
 
-    var query = QueryBuilder.makelistquery(qent, q)
-    return done(null, {query: query})
+    buildSelectStatement(q, function (err, query) {
+      return done(err, {query: query})
+    })
+
+    function buildSelectStatement (q, done) {
+      var query
+
+      if (_.isString(q)) {
+        return done(null, q)
+      }
+      else if (_.isArray(q)) {
+        // first element in array should be query, the other being values
+        if (q.length === 0) {
+          var errorDetails = {
+            message: 'Invalid query',
+            query: q
+          }
+          seneca.log.error('Invalid query')
+          return done(errorDetails)
+        }
+        query = {}
+        // query.text = QueryBuilder.fixPrepStatement(q[0])
+        query.text = q[0]
+        query.values = _.clone(q)
+        query.values.splice(0, 1)
+        return done(null, query)
+      }
+      else {
+        if (q.ids) {
+          return done(null, QueryBuilder.selectstmOr(qent, q))
+        }
+        else {
+          QueryBuilder.selectstm(qent, q, done)
+        }
+      }
+    }
   })
 
   seneca.add({role: actionRole, hook: 'save'}, function (args, done) {
     var ent = args.ent
     var update = !!ent.id
     var query
-    var entp = QueryBuilder.makeentp(ent)
 
     if (update) {
-      query = 'UPDATE ' + QueryBuilder.tablename(ent) + ' SET ? WHERE id=\'' + entp.id + '\''
-    }
-    else {
-      query = 'INSERT INTO ' + QueryBuilder.tablename(ent) + ' SET ?'
+      query = QueryBuilder.updatestm(ent)
+      return done(null, {query: query, operation: 'update'})
     }
 
-    if (update) {
-      return done(null, {query: query, operation: 'save/update'})
+    if (ent.id$) {
+      ent.id = ent.id$
+      query = QueryBuilder.savestm(ent)
+      return done(null, {query: query, operation: 'save'})
     }
-    else {
-      return done(null, {query: query, operation: 'save/insert'})
+
+    if (internals.opts.auto_increment) {
+      query = QueryBuilder.savestm(ent)
+      return done(null, {query: query, operation: 'save'})
     }
+
+    seneca.act({role: actionRole, hook: 'generate_id', target: args.target}, function (err, result) {
+      if (err) {
+        seneca.log.error('hook generate_id failed')
+        return done(err)
+      }
+      ent.id = result.id
+      query = QueryBuilder.savestm(ent)
+      return done(null, {query: query, operation: 'save'})
+    })
   })
 
   seneca.add({role: actionRole, hook: 'remove'}, function (args, done) {
@@ -434,6 +464,10 @@ module.exports = function (options) {
 
     var query = QueryBuilder.deletestm(qent, q)
     return done(null, {query: query})
+  })
+
+  seneca.add({role: actionRole, hook: 'generate_id', target: store.name}, function (args, done) {
+    return done(null, {id: Uuid()})
   })
 
   return {name: store.name, tag: meta.tag}
