@@ -45,7 +45,6 @@ var buildQueryFromExpression = function (entp, query_parameters, values) {
       }
       resultStr += results[i].data
     }
-    console.log('(' + resultStr + ')')
     params.push('(' + resultStr + ')')
   }
 
@@ -69,7 +68,6 @@ var buildQueryFromExpression = function (entp, query_parameters, values) {
       }
       resultStr += results[i].data
     }
-    console.log('(' + resultStr + ')')
     params.push('(' + resultStr + ')')
   }
 
