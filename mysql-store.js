@@ -19,7 +19,6 @@ module.exports = function (options) {
   var seneca = this
 
   var opts = seneca.util.deepextend(DefaultConfig, options)
-  // Declare internals
   var internals = {
     name: storeName,
     opts: opts,
@@ -184,8 +183,9 @@ module.exports = function (options) {
       Assert(args.ent)
 
       var seneca = this
+      var autoIncrement = internals.opts.auto_increment || false
 
-      seneca.act({role: actionRole, hook: 'save', target: store.name}, args, function (err, queryObj) {
+      seneca.act({role: actionRole, hook: 'save', target: store.name, auto_increment: autoIncrement}, args, function (err, queryObj) {
         var query = queryObj.query
         var operation = queryObj.operation
 
@@ -200,7 +200,7 @@ module.exports = function (options) {
             return done(err, {code: operation, tag: args.tag$, store: store.name, query: query, error: err})
           }
 
-          if (!!args.ent && internals.opts.auto_increment && res.insertId) {
+          if (!!args.ent && autoIncrement && res.insertId) {
             args.ent.id = res.insertId
           }
 
@@ -430,6 +430,7 @@ module.exports = function (options) {
     var ent = args.ent
     var update = !!ent.id
     var query
+    var autoIncrement = args.auto_increment || false
 
     if (update) {
       query = QueryBuilder.updatestm(ent)
@@ -442,7 +443,7 @@ module.exports = function (options) {
       return done(null, {query: query, operation: 'save'})
     }
 
-    if (internals.opts.auto_increment) {
+    if (autoIncrement) {
       query = QueryBuilder.savestm(ent)
       return done(null, {query: query, operation: 'save'})
     }
