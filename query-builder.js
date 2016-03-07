@@ -303,7 +303,7 @@ function selectstmOr (qent, q) {
 
   if (!_.isEmpty(w) && w.params.length > 0) {
     w.params.forEach(function (param) {
-      params.push('`' + RelationalStore.escapeStr(RelationalStore.camelToSnakeCase('id')) + '`=')
+      params.push('`' + RelationalStore.escapeStr(RelationalStore.camelToSnakeCase('id')) + '`=?')
     })
 
     w.values.forEach(function (value) {
