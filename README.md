@@ -9,6 +9,8 @@
 [![Dependency Status][david-badge]][david-url]
 [![Gitter][gitter-badge]][gitter-url]
 
+## Description
+
 A storage engine that uses [mySql][] to persist data. It may also be used as an example on how to
 implement a storage plugin for Seneca using an underlying relational store.
 
@@ -21,6 +23,9 @@ If you're using this module, and need help, you can:
 If you are new to Seneca in general, please take a look at [senecajs.org][]. We have everything from
 tutorials to sample apps to help get you up and running quickly.
 
+### Seneca compatibility
+Supports Seneca versions **1.x** and **2.x**
+
 ## Install
 To install, simply use npm. Remember you will need to install [Seneca.js][]
 separately.
@@ -28,37 +33,6 @@ separately.
 ```
 npm install seneca
 npm install seneca-mysql-store
-```
-
-## Test
-To run tests, simply use npm:
-
-```
-npm run test
-```
-
-## To run tests with Docker
-
-Build the MySQL Docker image:
-
-```sh
-npm run build
-
-```
-
-Start the MySQL container:
-```sh
-npm run start
-```
-
-Stop the MySQL container:
-```sh
-npm run stop
-```
-
-While the container is running you can run the tests into another terminal:
-```sh
-npm run test
 ```
 
 ## Quick Example
@@ -120,11 +94,42 @@ As with all seneca stores, you can access the native driver, in this case, the `
 
 
 ## Contributing
-We encourage participation. If you feel you can help in any way, be it with
-examples, extra testing, or new features please get in touch.
+The [Senecajs org][] encourage open participation. If you feel you can help in any way, be it with
+documentation, examples, extra testing, or new features please get in touch.
+
+## Test
+To run tests, simply use npm:
+
+```
+npm run test
+```
+
+## To run tests with Docker
+Build the MySQL Docker image:
+
+```sh
+npm run build
+
+```
+
+Start the MySQL container:
+```sh
+npm run start
+```
+
+Stop the MySQL container:
+```sh
+npm run stop
+```
+
+While the container is running you can run the tests into another terminal:
+```sh
+npm run test
+```
 
 ## License
-Copyright Mircea Alexandru and other contributors 2016, Licensed under [MIT][].
+Copyright (c) 2012-2016, Mircea Alexandru and other contributors.
+Licensed under [MIT][].
 
 [npm-badge]: https://img.shields.io/npm/v/seneca-mysql-store.svg
 [npm-url]: https://npmjs.com/package/seneca-mysql-store
@@ -136,13 +141,10 @@ Copyright Mircea Alexandru and other contributors 2016, Licensed under [MIT][].
 [coverage-url]: https://coveralls.io/github/senecajs/seneca-mysql-store?branch=master
 [david-badge]: https://david-dm.org/senecajs/seneca-mysql-store.svg
 [david-url]: https://david-dm.org/senecajs/seneca-mysql-store
-
 [gitter-badge]: https://badges.gitter.im/Join%20Chat.svg
 [gitter-url]: https://gitter.im/senecajs/seneca
-
 [mySql]: https://www.mysql.com/
 [node-mysqldb-native]: http://mysqldb.github.com/node-mysqldb-native/markdown-docs/queries.html
-
 [MIT]: ./LICENSE.txt
 [Senecajs org]: https://github.com/senecajs/
 [Seneca.js]: https://www.npmjs.com/package/seneca

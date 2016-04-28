@@ -1,6 +1,10 @@
 sudo: false
 language: node_js
 
+env:
+  - SENECA_VER=@1.x.x
+  - SENECA_VER=@2.x.x
+
 node_js:
   - '5'
   - '4'
@@ -16,6 +20,7 @@ services:
 
 before_script:
   - mysql -h localhost -u root --password="" < ./script/schema.sql
+  - npm install seneca$SENECA_VER
 
 after_script:
   npm run coverage
