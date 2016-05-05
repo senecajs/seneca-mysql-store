@@ -34,6 +34,10 @@ var si = Seneca({
   }
 })
 
+if (si.version >= '2.0.0') {
+  si.use('entity')
+}
+
 describe('MySQL suite tests ', function () {
   before({}, function (done) {
     si.use(require('../mysql-store.js'), dbConfig)
@@ -76,6 +80,10 @@ var si2 = Seneca({
     'mem-store': false
   }
 })
+
+if (si2.version >= '2.0.0') {
+  si2.use('entity')
+}
 
 describe('MySQL autoincrement tests ', function () {
   before({}, function (done) {

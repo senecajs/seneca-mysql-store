@@ -97,13 +97,6 @@ As with all seneca stores, you can access the native driver, in this case, the `
 The [Senecajs org][] encourage open participation. If you feel you can help in any way, be it with
 documentation, examples, extra testing, or new features please get in touch.
 
-## Test
-To run tests, simply use npm:
-
-```
-npm run test
-```
-
 ## To run tests with Docker
 Build the MySQL Docker image:
 
@@ -126,6 +119,10 @@ While the container is running you can run the tests into another terminal:
 ```sh
 npm run test
 ```
+
+#### Testing for Mac users
+Before the tests can be run you must run `docker-machine env default` and copy the docker host address (example: '192.168.99.100'). 
+This address must be inserted into the test/dbconfig.example.js file as the value for the host variable. The tests can now be run.
 
 ## License
 Copyright (c) 2012-2016, Mircea Alexandru and other contributors.
