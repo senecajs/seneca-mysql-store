@@ -6,6 +6,7 @@ env:
   - SENECA_VER=@2.x.x
 
 node_js:
+  - '6'
   - '5'
   - '4'
   - '0.12'
@@ -19,8 +20,10 @@ services:
 - mysql
 
 before_script:
+  - if [[ $TRAVIS_NODE_VERSION == "6" ]]; then export LAB_FLAGS="--leaks"; else export LAB_FLAGS=""; fi
   - mysql -h localhost -u root --password="" < ./script/schema.sql
   - npm install seneca$SENECA_VER
+  - echo FLAGS:$LAB_FLAGS
 
 after_script:
   npm run coverage
