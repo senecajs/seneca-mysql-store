@@ -26,4 +26,4 @@ before_script:
   - echo FLAGS:$LAB_FLAGS
 
 after_script:
-  npm run coverage
+  - npm run coverage
