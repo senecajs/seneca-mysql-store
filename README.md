@@ -7,6 +7,7 @@
 [![Build Status][travis-badge]][travis-url]
 [![Coverage Status][coverage-badge]][coverage-url]
 [![Dependency Status][david-badge]][david-url]
+[![Coveralls][BadgeCoveralls]][Coveralls]
 [![Gitter][gitter-badge]][gitter-url]
 
 ## Description
@@ -148,3 +149,5 @@ Licensed under [MIT][].
 [senecajs.org]: http://senecajs.org/
 [github issue]: https://github.com/senecajs/seneca-mysql-store/issues
 [@senecajs]: http://twitter.com/senecajs
+[Coveralls]: https://coveralls.io/github/senecajs/seneca-mysql-store?branch=master
+[BadgeCoveralls]: https://coveralls.io/repos/github/senecajs/seneca-mysql-store/badge.svg?branch=master
