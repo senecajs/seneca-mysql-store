@@ -122,7 +122,8 @@ module.exports = function (options) {
       host: conf.host,
       user: conf.user || conf.username,
       password: conf.password,
-      database: conf.name
+      database: conf.name,
+      port: conf.port || 3306
     }
     var conn = conf.conn || defaultConn
     internals.connectionPool = MySQL.createPool(conn)
