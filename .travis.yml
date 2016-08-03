@@ -22,6 +22,7 @@ services:
 before_script:
   - if [[ $TRAVIS_NODE_VERSION == "6" ]]; then export LAB_FLAGS="--leaks"; else export LAB_FLAGS=""; fi
   - mysql -h localhost -u root --password="" < ./script/schema.sql
+  - npm uninstall seneca
   - npm install seneca$SENECA_VER
   - echo FLAGS:$LAB_FLAGS
 
