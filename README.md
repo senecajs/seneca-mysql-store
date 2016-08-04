@@ -141,3 +141,4 @@ Licensed under [MIT][].
 [Coveralls]: https://coveralls.io/github/senecajs/seneca-mysql-store?branch=master
 [BadgeCoveralls]: https://coveralls.io/repos/github/senecajs/seneca-mysql-store/badge.svg?branch=master
 [standard-query]: https://github.com/senecajs/seneca-standard-query
+[store-query]: https://github.com/senecajs/seneca-store-query
