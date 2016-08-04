@@ -72,27 +72,16 @@ entity.remove$({id: ...}, function (err, entity) { ... })
 ```
 
 ### Query Support
-The standard Seneca query format is supported:
 
-- `.list$({f1:v1, f2:v2, ...})` implies pseudo-query `f1==v1 AND f2==v2, ...`.
+The standard Seneca query format is supported. See the [seneca-standard-query][standard-query] plugin for more details.
 
-- `.list$({f1:v1, ...}, {sort$:{field1:1}})` means sort by f1, ascending.
+## Extended Query Support
 
-- `.list$({f1:v1, ...}, {sort$:{field1:-1}})` means sort by f1, descending.
-
-- `.list$({f1:v1, ...}, {limit$:10})` means only return 10 results.
-
-- `.list$({f1:v1, ...}, {skip$:5})` means skip the first 5.
-
-- `.list$({f1:v1,...}, {fields$:['fd1','f2']})` means only return the listed fields.
-
-Note: you can use `sort$`, `limit$`, `skip$` and `fields$` together.
-
+By using the [seneca-store-query][store-query] plugin its query capabilities can be extended. See the plugin page for more details.
 
 ### Native Driver
 As with all seneca stores, you can access the native driver, in this case, the `mysql`
 `connectionPool` object using `entity.native$(function (err, connectionPool) {...})`.
-
 
 ## Contributing
 The [Senecajs org][] encourage open participation. If you feel you can help in any way, be it with
@@ -151,3 +140,4 @@ Licensed under [MIT][].
 [@senecajs]: http://twitter.com/senecajs
 [Coveralls]: https://coveralls.io/github/senecajs/seneca-mysql-store?branch=master
 [BadgeCoveralls]: https://coveralls.io/repos/github/senecajs/seneca-mysql-store/badge.svg?branch=master
+[standard-query]: https://github.com/senecajs/seneca-standard-query
