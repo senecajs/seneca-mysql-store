@@ -1,6 +1,6 @@
 {
   "name": "seneca-mysql-store",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "MySQL database layer for Seneca framework",
   "main": "mysql-store.js",
   "license": "MIT",
@@ -49,13 +49,14 @@
     "node-uuid": "1.4.7"
   },
   "files": [
-    "README.md",
-    "HISTORY.md",
+    "lib",
+    "CHANGES.md",
     "LICENSE.txt",
+    "README.md",
+    "default_config.json",
     "mysql-store.js",
-    "query-builder.js",
     "package.json",
-    "default_config.json"
+    "query-builder.js"
   ],
   "devDependencies": {
     "chai": "3.5.0",

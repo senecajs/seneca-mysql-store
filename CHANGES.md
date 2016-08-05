@@ -1,3 +1,6 @@
+# 1.0.1 2016/08/05
+* Fixed incorrect package.json "files" section
+
 # 1.0.0 2016/08/04
 * Replaced query generation with seneca-standard-query
 * Extended and unified the patterns with seneca-postgres-store
