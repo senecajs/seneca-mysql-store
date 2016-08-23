@@ -22,8 +22,7 @@
     "build": "docker-compose build",
     "start": "docker-compose up",
     "stop": "docker-compose kill",
-    "test": "lab test/*.test.js -r console -v -L -m 3000 -t 72 $LAB_FLAGS",
-    "test:node6": "LAB_FLAGS='--leaks' && npm test",
+    "test": "lab test/*.test.js -r console -v -L -m 3000 -t 72",
     "lint": "lab -dL",
     "coverage": "lab test/*.test.js -v -r lcov | coveralls",
     "annotate": "docco mysql-store.js -o doc"
@@ -42,9 +41,9 @@
     "plugin"
   ],
   "dependencies": {
-    "async": "1.5.2",
+    "async": "2.0.1",
     "eraro": "0.4.1",
-    "lodash": "4.6.0",
+    "lodash": "4.15.0",
     "mysql": "2.11.1",
     "node-uuid": "1.4.7"
   },
@@ -60,15 +59,15 @@
   ],
   "devDependencies": {
     "chai": "3.5.0",
-    "code": "1.5.0",
-    "docco": "0.7.0",
-    "eslint-config-seneca": "1.x.x",
+    "code": "3.0.x",
+    "docco": "0.7.x",
+    "eslint-config-seneca": "3.x.x",
     "eslint-plugin-hapi": "4.x.x",
-    "eslint-plugin-standard": "1.x.x",
-    "lab": "6.2.x",
+    "eslint-plugin-standard": "2.x.x",
+    "lab": "11.0.x",
     "seneca": "plugin",
-    "seneca-entity": "1.2.0",
+    "seneca-entity": "1.2.x",
     "seneca-store-test": "1.0.0",
-    "coveralls": "2.x.x"
+    "coveralls": "2.11.x"
   }
 }
