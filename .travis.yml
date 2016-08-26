@@ -22,4 +22,4 @@ before_script:
   - npm install seneca$SENECA_VER
 
 after_script:
-  - npm run coverage
+  - npm run coveralls
