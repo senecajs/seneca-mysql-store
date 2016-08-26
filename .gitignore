@@ -26,3 +26,4 @@ test/dbconfig.mine.js
 .vscode/
 
 docs/annotated
+docs/coverage.html
