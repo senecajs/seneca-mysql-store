@@ -132,7 +132,7 @@ Licensed under [MIT][].
 [gitter-url]: https://gitter.im/senecajs/seneca
 [mySql]: https://www.mysql.com/
 [node-mysqldb-native]: http://mysqldb.github.com/node-mysqldb-native/markdown-docs/queries.html
-[MIT]: ./LICENSE.txt
+[MIT]: ./LICENSE
 [Senecajs org]: https://github.com/senecajs/
 [Seneca.js]: https://www.npmjs.com/package/seneca
 [senecajs.org]: http://senecajs.org/
