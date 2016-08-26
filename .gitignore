@@ -24,3 +24,5 @@ test/dbconfig.mine.js
 .idea/
 .settings/
 .vscode/
+
+docs/annotated

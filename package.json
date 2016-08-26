@@ -16,7 +16,12 @@
     "Guy Ellis (https://github.com/guyellis)",
     "Richard Rodger (http://richardrodger.com/)",
     "Cristian Kiss (https://github.com/ckiss)",
-    "Mihai Dima <mihaizn@gmail.com>"
+    "Mihai Dima <mihaizn@gmail.com>",
+    "Max Nachlinger (https://github.com/maxnachlinger)",
+    "Shane Lacey (https://github.com/shanel262)",
+    "Thinh (https://github.com/voxuanthinh)",
+    "Seamus D'Arcy (https://github.com/darsee)",
+    "Kamil Mech (https://github.com/kamil-mech)"
   ],
   "scripts": {
     "build": "docker-compose build",
@@ -25,7 +30,7 @@
     "test": "lab test/*.test.js -r console -v -L -m 3000 -t 72",
     "lint": "lab -dL",
     "coverage": "lab test/*.test.js -v -r lcov | coveralls",
-    "annotate": "docco mysql-store.js -o doc"
+    "annotate": "docco mysql-store.js -o docs/annotated"
   },
   "bugs": {
     "url": "https://github.com/senecajs/seneca-mysql-store/issues"
@@ -50,7 +55,7 @@
   "files": [
     "lib",
     "CHANGES.md",
-    "LICENSE.txt",
+    "LICENSE",
     "README.md",
     "default_config.json",
     "mysql-store.js",
@@ -60,14 +65,18 @@
   "devDependencies": {
     "chai": "3.5.0",
     "code": "3.0.x",
+    "coveralls": "2.11.x",
     "docco": "0.7.x",
     "eslint-config-seneca": "3.x.x",
     "eslint-plugin-hapi": "4.x.x",
     "eslint-plugin-standard": "2.x.x",
     "lab": "11.0.x",
+    "pre-commit": "1.1.3",
     "seneca": "plugin",
     "seneca-entity": "1.2.x",
-    "seneca-store-test": "1.0.0",
-    "coveralls": "2.11.x"
-  }
+    "seneca-store-test": "1.0.0"
+  },
+  "pre-commit": [
+    "test"
+  ]
 }
