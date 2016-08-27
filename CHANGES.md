@@ -1,3 +1,8 @@
+# 1.1.0 2016/08/27
+* Added Seneca 3 and Node 6 support
+* Dropped Node 0.10, 0.12, 5 support
+* Updated dependencies
+
 # 1.0.1 2016/08/05
 * Fixed incorrect package.json "files" section
 
