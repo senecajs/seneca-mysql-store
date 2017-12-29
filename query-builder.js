@@ -4,7 +4,7 @@ var RelationalStore = require('./lib/relational-util')
 var _ = require('lodash')
 var OpParser = require('./lib/operator_parser')
 
-var buildQueryFromExpression = function (entp, query_parameters, values) {
+var buildQueryFromExpression = function(entp, query_parameters, values) {
   var params = []
   values = values || []
 
@@ -19,15 +19,14 @@ var buildQueryFromExpression = function (entp, query_parameters, values) {
       }
     }
 
-    return {err: null, data: params.join(' AND '), values: values}
-  }
-  else {
-    return {values: values}
+    return { err: null, data: params.join(' AND '), values: values }
+  } else {
+    return { values: values }
   }
 
-  function parseOr (current_name, current_value) {
+  function parseOr(current_name, current_value) {
     if (!_.isArray(current_value)) {
-      return {err: 'or$ operator requires an array value'}
+      return { err: 'or$ operator requires an array value' }
     }
 
     var results = []
@@ -48,9 +47,9 @@ var buildQueryFromExpression = function (entp, query_parameters, values) {
     params.push('(' + resultStr + ')')
   }
 
-  function parseAnd (current_name, current_value) {
+  function parseAnd(current_name, current_value) {
     if (!_.isArray(current_value)) {
-      return {err: 'and$ operator requires an array value'}
+      return { err: 'and$ operator requires an array value' }
     }
 
     var results = []
@@ -71,57 +70,77 @@ var buildQueryFromExpression = function (entp, query_parameters, values) {
     params.push('(' + resultStr + ')')
   }
 
-  function parseExpression (current_name, current_value) {
+  function parseExpression(current_name, current_value) {
     if (current_name === 'or$') {
       parseOr(current_name, current_value)
-    }
-    else if (current_name === 'and$') {
+    } else if (current_name === 'and$') {
       parseAnd(current_name, current_value)
-    }
-    else {
+    } else {
       if (current_name.indexOf('$') !== -1) {
         return {}
       }
 
       if (current_value === null) {
         // we can't use the equality on null because NULL != NULL
-        params.push('`' + RelationalStore.escapeStr(RelationalStore.camelToSnakeCase(current_name)) + '` IS NULL')
-      }
-      else if (current_value instanceof RegExp) {
-        var op = (current_value.ignoreCase) ? '~*' : '~'
+        params.push(
+          '`' +
+            RelationalStore.escapeStr(
+              RelationalStore.camelToSnakeCase(current_name)
+            ) +
+            '` IS NULL'
+        )
+      } else if (current_value instanceof RegExp) {
+        var op = current_value.ignoreCase ? '~*' : '~'
         values.push(current_value.source)
-        params.push('`' + RelationalStore.escapeStr(RelationalStore.camelToSnakeCase(current_name)) + '`' + op + '?')
-      }
-      else if (_.isObject(current_value)) {
-        var result = parseComplexSelectOperator(current_name, current_value, params)
+        params.push(
+          '`' +
+            RelationalStore.escapeStr(
+              RelationalStore.camelToSnakeCase(current_name)
+            ) +
+            '`' +
+            op +
+            '?'
+        )
+      } else if (_.isObject(current_value)) {
+        var result = parseComplexSelectOperator(
+          current_name,
+          current_value,
+          params
+        )
         if (result.err) {
           return result
         }
-      }
-      else {
+      } else {
         values.push(current_value)
-        params.push('`' + RelationalStore.escapeStr(RelationalStore.camelToSnakeCase(current_name)) + '`=' + '?')
+        params.push(
+          '`' +
+            RelationalStore.escapeStr(
+              RelationalStore.camelToSnakeCase(current_name)
+            ) +
+            '`=' +
+            '?'
+        )
       }
     }
     return {}
   }
 
-  function parseComplexSelectOperator (current_name, current_value, params) {
+  function parseComplexSelectOperator(current_name, current_value, params) {
     for (var op in current_value) {
       var op_val = current_value[op]
       if (!OpParser[op]) {
-        return {err: 'This operator is not yet implemented: ' + op}
+        return { err: 'This operator is not yet implemented: ' + op }
       }
       var err = OpParser[op](current_name, op_val, params, values)
       if (err) {
-        return {err: err}
+        return { err: err }
       }
     }
     return {}
   }
 }
 
-function whereargs (entp, q) {
+function whereargs(entp, q) {
   var w = {}
 
   w.params = []
@@ -139,7 +158,7 @@ function whereargs (entp, q) {
   return w
 }
 
-function fixPrepStatement (stm) {
+function fixPrepStatement(stm) {
   var index = 1
   while (stm.indexOf('?') !== -1) {
     stm = stm.replace('?', '$' + index)
@@ -148,7 +167,7 @@ function fixPrepStatement (stm) {
   return stm
 }
 
-function savestm (ent) {
+function savestm(ent) {
   var stm = {}
 
   var table = RelationalStore.tablename(ent)
@@ -161,19 +180,30 @@ function savestm (ent) {
   // var cnt = 0
 
   var escapedFields = []
-  fields.forEach(function (field) {
-    escapedFields.push('`' + RelationalStore.escapeStr(RelationalStore.camelToSnakeCase(field)) + '`')
+  fields.forEach(function(field) {
+    escapedFields.push(
+      '`' +
+        RelationalStore.escapeStr(RelationalStore.camelToSnakeCase(field)) +
+        '`'
+    )
     values.push(entp[field])
     params.push('?')
   })
 
-  stm.text = 'INSERT INTO ' + RelationalStore.escapeStr(table) + ' (' + escapedFields + ') values (' + RelationalStore.escapeStr(params) + ')'
+  stm.text =
+    'INSERT INTO ' +
+    RelationalStore.escapeStr(table) +
+    ' (' +
+    escapedFields +
+    ') values (' +
+    RelationalStore.escapeStr(params) +
+    ')'
   stm.values = values
 
   return stm
 }
 
-function updatestm (ent) {
+function updatestm(ent) {
   var stm = {}
 
   var table = RelationalStore.tablename(ent)
@@ -184,24 +214,34 @@ function updatestm (ent) {
   var params = []
   // var cnt = 0
 
-  fields.forEach(function (field) {
+  fields.forEach(function(field) {
     if (field.indexOf('$') !== -1) {
       return
     }
 
     if (!_.isUndefined(entp[field])) {
       values.push(entp[field])
-      params.push(RelationalStore.escapeStr(RelationalStore.camelToSnakeCase(field)) + '=?')
+      params.push(
+        RelationalStore.escapeStr(RelationalStore.camelToSnakeCase(field)) +
+          '=?'
+      )
     }
   })
 
-  stm.text = 'UPDATE ' + RelationalStore.escapeStr(table) + ' SET ' + params + " WHERE id='" + RelationalStore.escapeStr(ent.id) + "'"
+  stm.text =
+    'UPDATE ' +
+    RelationalStore.escapeStr(table) +
+    ' SET ' +
+    params +
+    " WHERE id='" +
+    RelationalStore.escapeStr(ent.id) +
+    "'"
   stm.values = values
 
   return stm
 }
 
-function deletestm (qent, q) {
+function deletestm(qent, q) {
   var stm = {}
 
   var table = RelationalStore.tablename(qent)
@@ -225,14 +265,17 @@ function deletestm (qent, q) {
         continue
       }
 
-      params.push('`' + RelationalStore.escapeStr(RelationalStore.camelToSnakeCase(param)) + '`=?')
+      params.push(
+        '`' +
+          RelationalStore.escapeStr(RelationalStore.camelToSnakeCase(param)) +
+          '`=?'
+      )
       values.push(RelationalStore.escapeStr(val))
     }
 
     if (params.length > 0) {
       wherestr = ' WHERE ' + params.join(' AND ')
-    }
-    else {
+    } else {
       wherestr = ' '
     }
   }
@@ -243,7 +286,7 @@ function deletestm (qent, q) {
   return stm
 }
 
-function selectstm (qent, q, done) {
+function selectstm(qent, q, done) {
   var specialOps = ['fields$']
   var specialOpsVal = {}
 
@@ -275,18 +318,28 @@ function selectstm (qent, q, done) {
   var metastr = ' ' + mq.params.join(' ')
 
   var what = '*'
-  if (specialOpsVal['fields$'] && _.isArray(specialOpsVal['fields$']) && specialOpsVal['fields$'].length > 0) {
+  if (
+    specialOpsVal['fields$'] &&
+    _.isArray(specialOpsVal['fields$']) &&
+    specialOpsVal['fields$'].length > 0
+  ) {
     what = ' ' + specialOpsVal['fields$'].join(', ')
     what += ', id '
   }
 
-  stm.text = 'SELECT ' + what + ' FROM ' + RelationalStore.escapeStr(table) + (wherestr ? ' WHERE ' + wherestr : '') + RelationalStore.escapeStr(metastr)
+  stm.text =
+    'SELECT ' +
+    what +
+    ' FROM ' +
+    RelationalStore.escapeStr(table) +
+    (wherestr ? ' WHERE ' + wherestr : '') +
+    RelationalStore.escapeStr(metastr)
   stm.values = values
 
   done(null, stm)
 }
 
-function selectstmOr (qent, q) {
+function selectstmOr(qent, q) {
   var stm = {}
 
   var table = RelationalStore.tablename(qent)
@@ -302,11 +355,15 @@ function selectstmOr (qent, q) {
   var wherestr = ''
 
   if (!_.isEmpty(w) && w.params.length > 0) {
-    w.params.forEach(function (param) {
-      params.push('`' + RelationalStore.escapeStr(RelationalStore.camelToSnakeCase('id')) + '`=?')
+    w.params.forEach(function() {
+      params.push(
+        '`' +
+          RelationalStore.escapeStr(RelationalStore.camelToSnakeCase('id')) +
+          '`=?'
+      )
     })
 
-    w.values.forEach(function (value) {
+    w.values.forEach(function(value) {
       values.push(value)
     })
 
@@ -323,13 +380,17 @@ function selectstmOr (qent, q) {
 
   var metastr = ' ' + mq.params.join(' ')
 
-  stm.text = 'SELECT * FROM ' + RelationalStore.escapeStr(table) + wherestr + RelationalStore.escapeStr(metastr)
+  stm.text =
+    'SELECT * FROM ' +
+    RelationalStore.escapeStr(table) +
+    wherestr +
+    RelationalStore.escapeStr(metastr)
   stm.values = values
 
   return stm
 }
 
-function metaquery (qent, q) {
+function metaquery(qent, q) {
   var mq = {}
 
   mq.params = []
@@ -338,7 +399,9 @@ function metaquery (qent, q) {
   if (q.sort$) {
     for (var sf in q.sort$) break
     var sd = q.sort$[sf] > 0 ? 'ASC' : 'DESC'
-    mq.params.push('ORDER BY ' + RelationalStore.camelToSnakeCase(sf) + ' ' + sd)
+    mq.params.push(
+      'ORDER BY ' + RelationalStore.camelToSnakeCase(sf) + ' ' + sd
+    )
   }
 
   if (q.limit$) {

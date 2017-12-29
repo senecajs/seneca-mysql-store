@@ -30,7 +30,8 @@
     "test": "lab test/*.test.js -r console -v -L -m 3000 -t 72",
     "lint": "lab -dL",
     "coverage": "lab -v -P test -L -t 80 -r html > docs/coverage.html",
-    "annotate": "docco mysql-store.js -o docs/annotated"
+    "annotate": "docco mysql-store.js -o docs/annotated",
+    "prettier": "prettier --write --no-semi --single-quote mysql-store.js query-builder.js test/*.js lib/*.js"
   },
   "bugs": {
     "url": "https://github.com/senecajs/seneca-mysql-store/issues"
@@ -80,3 +81,4 @@
     "test"
   ]
 }
+

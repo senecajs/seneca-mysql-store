@@ -15,18 +15,16 @@ var Autoincrement = require('./mysql.autoincrement.test.js')
 var Fs = require('fs')
 
 var Lab = require('lab')
-var lab = exports.lab = Lab.script()
+var lab = (exports.lab = Lab.script())
 var before = lab.before
 var describe = lab.describe
 
 var dbConfig
 if (Fs.existsSync(__dirname + '/dbconfig.mine.js')) {
   dbConfig = require('./dbconfig.mine')
-}
-else {
+} else {
   dbConfig = require('./dbconfig.example')
 }
-
 
 var si = Seneca({
   default_plugins: {
@@ -38,8 +36,8 @@ if (si.version >= '2.0.0') {
   si.use('entity')
 }
 
-describe('MySQL suite tests ', function () {
-  before({}, function (done) {
+describe('MySQL suite tests ', function() {
+  before({}, function(done) {
     si.use(require('../mysql-store.js'), dbConfig)
     si.ready(done)
   })
@@ -71,7 +69,7 @@ describe('MySQL suite tests ', function () {
 })
 
 var incrementConfig = _.assign({}, dbConfig, {
-  map: {'-/-/incremental': '*'},
+  map: { '-/-/incremental': '*' },
   auto_increment: true
 })
 
@@ -85,8 +83,8 @@ if (si2.version >= '2.0.0') {
   si2.use('entity')
 }
 
-describe('MySQL autoincrement tests ', function () {
-  before({}, function (done) {
+describe('MySQL autoincrement tests ', function() {
+  before({}, function(done) {
     si2.use(require('../mysql-store.js'), incrementConfig)
     si2.ready(done)
   })
