@@ -3,33 +3,33 @@
 var Async = require('async')
 var Assert = require('chai').assert
 
-function autoincrementTest (settings) {
+function autoincrementTest(settings) {
   var si = settings.seneca
   var script = settings.script
 
   var describe = script.describe
   var it = script.it
 
-  describe('Autoincrement tests', function () {
-    it('Autoincrement tests', function extended (done) {
+  describe('Autoincrement tests', function() {
+    it('Autoincrement tests', function extended(done) {
       Async.series(
         {
-          removeAll: function (next) {
-            var foo = si.make({name$: 'incremental'})
-            foo.remove$({all$: true}, function (err, res) {
+          removeAll: function(next) {
+            var foo = si.make({ name$: 'incremental' })
+            foo.remove$({ all$: true }, function(err) {
               Assert(!err)
               next()
             })
           },
-          allowAutoIncrementId: function (next) {
+          allowAutoIncrementId: function(next) {
             var inc = si.make('incremental')
             inc.p1 = 'v1'
 
-            inc.save$(function (err, inc1) {
+            inc.save$(function(err, inc1) {
               Assert.isNull(err)
               Assert.isNotNull(inc1.id)
 
-              inc.load$({id: inc1.id}, function (err, inc2) {
+              inc.load$({ id: inc1.id }, function(err, inc2) {
                 Assert.isNull(err)
                 Assert.isNotNull(inc2)
                 Assert.equal(inc2.id, inc1.id)
@@ -39,10 +39,11 @@ function autoincrementTest (settings) {
             })
           }
         },
-        function (err, out) {
+        function(err) {
           Assert(!err)
           done()
-        })
+        }
+      )
     })
   })
 }

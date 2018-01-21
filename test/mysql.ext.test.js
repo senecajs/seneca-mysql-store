@@ -5,37 +5,37 @@ var Assert = require('chai').assert
 
 var scratch = {}
 
-function extendTest (settings) {
+function extendTest(settings) {
   var si = settings.seneca
   var script = settings.script
 
   var describe = script.describe
   var it = script.it
 
-  describe('Extended tests', function () {
-    it('Extended tests', function extended (done) {
+  describe('Extended tests', function() {
+    it('Extended tests', function extended(done) {
       Async.series(
         {
-          removeAll: function (next) {
-            var foo = si.make({name$: 'foo'})
-            foo.remove$({all$: true}, function (err, res) {
+          removeAll: function(next) {
+            var foo = si.make({ name$: 'foo' })
+            foo.remove$({ all$: true }, function(err) {
               Assert(!err)
               next()
             })
           },
-          listEmpty: function (next) {
-            var foo = si.make({name$: 'foo'})
-            foo.list$({}, function (err, res) {
+          listEmpty: function(next) {
+            var foo = si.make({ name$: 'foo' })
+            foo.list$({}, function(err, res) {
               Assert(!err)
               Assert.equal(0, res.length)
               next()
             })
           },
-          insert2: function (next) {
-            var foo = si.make({name$: 'foo'})
+          insert2: function(next) {
+            var foo = si.make({ name$: 'foo' })
             foo.p1 = 'v1'
 
-            foo.save$(foo, function (err, foo) {
+            foo.save$(foo, function(err, foo) {
               Assert(!err)
               Assert.isNotNull(foo.id)
               Assert.equal('v1', foo.p1)
@@ -43,33 +43,33 @@ function extendTest (settings) {
               next()
             })
           },
-          list1: function (next) {
-            scratch.foo1.list$({}, function (err, res) {
+          list1: function(next) {
+            scratch.foo1.list$({}, function(err, res) {
               Assert(!err)
               Assert.equal(1, res.length)
               next()
             })
           },
 
-          list2: function (next) {
-            scratch.foo1.list$({id: scratch.foo1.id}, function (err, res) {
+          list2: function(next) {
+            scratch.foo1.list$({ id: scratch.foo1.id }, function(err, res) {
               Assert(!err)
               Assert.equal(1, res.length)
               next()
             })
           },
-          load1: function (next) {
-            scratch.foo1.load$({id: scratch.foo1.id}, function (err, res) {
+          load1: function(next) {
+            scratch.foo1.load$({ id: scratch.foo1.id }, function(err, res) {
               Assert(!err)
               Assert.isNotNull(res.id)
               next()
             })
           },
 
-          update: function (next) {
+          update: function(next) {
             scratch.foo1.p1 = 'v2'
 
-            scratch.foo1.save$(function (err, foo) {
+            scratch.foo1.save$(function(err, foo) {
               Assert(!err)
               Assert.isNotNull(foo.id)
               Assert.equal('v2', foo.p1)
@@ -77,19 +77,19 @@ function extendTest (settings) {
             })
           },
 
-          load2: function (next) {
-            scratch.foo1.load$({id: scratch.foo1.id}, function (err, res) {
+          load2: function(next) {
+            scratch.foo1.load$({ id: scratch.foo1.id }, function(err, res) {
               Assert(!err)
               Assert.equal('v2', res.p1)
               next()
             })
           },
 
-          insertwithsafe: function (next) {
-            var foo = si.make({name$: 'foo'})
+          insertwithsafe: function(next) {
+            var foo = si.make({ name$: 'foo' })
             foo.p1 = 'v3'
 
-            foo.save$(function (err, foo) {
+            foo.save$(function(err, foo) {
               Assert(!err)
               Assert.isNotNull(foo.id)
               Assert.equal('v3', foo.p1)
@@ -98,52 +98,56 @@ function extendTest (settings) {
             })
           },
 
-          list3: function (next) {
-            scratch.foo2.list$({id: scratch.foo2.id}, function (err, res) {
+          list3: function(next) {
+            scratch.foo2.list$({ id: scratch.foo2.id }, function(err, res) {
               Assert(!err)
               Assert.equal(1, res.length)
               next()
             })
           },
 
-          list4: function (next) {
-            scratch.foo2.list$({id: scratch.foo2.id, limit$: 1}, function (err, res) {
+          list4: function(next) {
+            scratch.foo2.list$({ id: scratch.foo2.id, limit$: 1 }, function(
+              err,
+              res
+            ) {
               Assert(!err)
               Assert.equal(1, res.length)
               next()
             })
           },
 
-          remove1: function (next) {
-            scratch.foo2.remove$({id: scratch.foo2.id}, function (err) {
+          remove1: function(next) {
+            scratch.foo2.remove$({ id: scratch.foo2.id }, function(err) {
               Assert(!err)
               next()
             })
           },
 
-          list5: function (next) {
+          list5: function(next) {
             var foo = si.make('foo')
-            foo.list$({}, function (err, res) {
+            foo.list$({}, function(err, res) {
               Assert(!err)
               Assert.equal(1, res.length)
               next()
             })
           },
 
-          reportAllErrors: function (next) {
+          reportAllErrors: function(next) {
             var foo = si.make('foo')
             foo.missing_attribute = 'v1'
 
-            foo.save$(function (err, foo1) {
+            foo.save$(function(err) {
               Assert.isNotNull(err)
               next()
             })
           }
         },
-        function (err, out) {
+        function(err) {
           Assert(!err)
           done()
-        })
+        }
+      )
     })
   })
 }
