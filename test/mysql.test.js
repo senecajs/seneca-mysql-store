@@ -57,7 +57,6 @@ describe('MySQL suite tests ', function () {
   })
 })
 
-
 describe('MySQL autoincrement tests ', function () {
   const incrementConfig = _.assign({}, DbConfig, {
     map: {'-/-/incremental': '*'},
