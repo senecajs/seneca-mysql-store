@@ -243,7 +243,7 @@ function deletestm (qent, q) {
   return stm
 }
 
-function selectstm (qent, q, done) {
+function selectstm (qent, q) {
   var specialOps = ['fields$']
   var specialOpsVal = {}
 
@@ -267,11 +267,9 @@ function selectstm (qent, q, done) {
   }
 
   var wherestr = response.data
-
   var values = response.values
 
   var mq = metaquery(qent, q)
-
   var metastr = ' ' + mq.params.join(' ')
 
   var what = '*'
@@ -280,10 +278,12 @@ function selectstm (qent, q, done) {
     what += ', id '
   }
 
-  stm.text = 'SELECT ' + what + ' FROM ' + RelationalStore.escapeStr(table) + (wherestr ? ' WHERE ' + wherestr : '') + RelationalStore.escapeStr(metastr)
+  stm.text = 'SELECT ' + what + ' FROM ' + RelationalStore.escapeStr(table) +
+    (wherestr ? ' WHERE ' + wherestr : '') + RelationalStore.escapeStr(metastr)
+
   stm.values = values
 
-  done(null, stm)
+  return stm
 }
 
 function selectstmOr (qent, q) {

@@ -150,6 +150,39 @@ function mysql_store (options) {
     }
   }
 
+  function findEnt(ent, q, done) {
+    try {
+      var query = buildLoadStm(ent, q)
+
+      return execQuery(query, function (err, rows) {
+        if (err) {
+          return done(err)
+        }
+
+        if (rows.length > 0) {
+          return done(null, makeEntOfRow(rows[0], ent))
+        }
+
+        return done(null, null)
+      })
+    } catch (err) {
+      return done(err)
+    }
+  }
+
+  function buildLoadStm(ent, q) {
+    var loadQ = _.clone(q)
+    loadQ.limit$ = 1
+
+    return QueryBuilder.selectstm(ent, loadQ)
+  }
+
+  // TODO: Remove this adapter.
+  //
+  function makeEntOfRow(row, ent) {
+    return RelationalStore.makeent(ent, row)
+  }
+
   // The store interface returned to seneca
   var store = {
     name: storeName,
@@ -220,36 +253,20 @@ function mysql_store (options) {
     // <li>done - callback<br>
     // </ul>
     load: function (args, done) {
-      Assert(args)
-      Assert(done)
-      Assert(args.qent)
-      Assert(args.q)
+      var seneca = this
 
-      var q = _.clone(args.q)
       var qent = args.qent
-      q.limit$ = 1
+      var q = args.q
 
-      seneca.act({role: actionRole, hook: 'load', target: store.name}, args, function (err, queryObj) {
-        var query = queryObj.query
-
+      return findEnt(qent, q, function (err, res) {
         if (err) {
-          seneca.log.error(query, err)
-          return done(err, {code: 'load', tag: args.tag$, store: store.name, query: query, error: err})
+          seneca.log.error('load', 'Error while fetching the entity:', err)
+          return done(err)
         }
 
-        execQuery(query, function (err, res, fields) {
-          if (err) {
-            seneca.log.debug(args.tag$, 'load', err)
-            return done(err)
-          }
+        seneca.log.debug('load', res)
 
-          var ent = RelationalStore.makeent(qent, res[0])
-
-          // TODO: Investigate a crash on this line:
-          //seneca.log.debug(args.tag$, 'load', ent)
-
-          done(null, ent)
-        })
+        return done(null, res)
       })
     },
 
@@ -367,7 +384,9 @@ function mysql_store (options) {
    * Initialization
    */
   var meta = seneca.store.init(seneca, opts, store)
+
   internals.desc = meta.desc
+
   seneca.add({init: store.name, tag: meta.tag}, function (args, done) {
     configure(internals.opts, function (err) {
       if (err) {
