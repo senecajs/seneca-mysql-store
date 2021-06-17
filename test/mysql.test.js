@@ -7,7 +7,6 @@
 
 'use strict'
 
-var _ = require('lodash')
 var Seneca = require('seneca')
 var Shared = require('seneca-store-test')
 var Extra = require('./mysql.ext.test.js')
@@ -58,10 +57,12 @@ describe('MySQL suite tests ', function () {
 })
 
 describe('MySQL autoincrement tests ', function () {
-  const incrementConfig = _.assign({}, DbConfig, {
-    map: {'-/-/incremental': '*'},
-    auto_increment: true
-  })
+  const incrementConfig = Object.assign(
+    {}, DbConfig, {
+      map: {'-/-/incremental': '*'},
+      auto_increment: true
+    }
+  )
 
   const si2 = makeSeneca({
     mysqlStoreOpts: incrementConfig

@@ -48,7 +48,6 @@
   "dependencies": {
     "async": "2.0.1",
     "eraro": "0.4.1",
-    "lodash": "4.15.0",
     "mysql": "2.11.1",
     "node-uuid": "1.4.7"
   },

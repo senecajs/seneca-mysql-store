@@ -140,8 +140,7 @@ function extendTest (settings) {
 
             process.stdout.write = output => {
               if ('string' === typeof output &&
-                output.includes(BAD_FIELD_ERROR_CODE))
-              {
+                output.includes(BAD_FIELD_ERROR_CODE)) {
                 return
               }
 
