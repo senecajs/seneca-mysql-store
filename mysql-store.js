@@ -15,7 +15,7 @@ var Eraro = require('eraro')({
 var storeName = 'mysql-store'
 var actionRole = 'sql'
 
-module.exports = function (options) {
+function mysql_store(options) {
   var seneca = this
 
   var opts = seneca.util.deepextend(DefaultConfig, options)
@@ -474,3 +474,5 @@ module.exports = function (options) {
 
   return {name: store.name, tag: meta.tag}
 }
+
+module.exports = mysql_store
