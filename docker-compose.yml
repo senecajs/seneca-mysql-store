@@ -3,7 +3,7 @@ mysql:
   ports:
     - "3306:3306"
   volumes:
-    - ./test/support/db:/docker-entrypoint-initdb.d
+    - ./test/support/db/seed:/docker-entrypoint-initdb.d
   working_dir: /var/mysql
   environment:
     MYSQL_ROOT_PASSWORD: "itsasekret_85a96vbFdh"

@@ -19,13 +19,7 @@ var lab = exports.lab = Lab.script()
 const { before, after } = lab
 var describe = lab.describe
 
-var dbConfig
-if (Fs.existsSync(__dirname + '/dbconfig.mine.js')) {
-  dbConfig = require('./dbconfig.mine')
-}
-else {
-  dbConfig = require('./dbconfig.example')
-}
+var dbConfig = require('./support/db/config')
 
 
 var si = Seneca({
