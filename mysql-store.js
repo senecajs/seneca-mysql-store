@@ -15,7 +15,7 @@ var Eraro = require('eraro')({
 var storeName = 'mysql-store'
 var actionRole = 'sql'
 
-function mysql_store(options) {
+function mysql_store (options) {
   var seneca = this
 
   var opts = seneca.util.deepextend(DefaultConfig, options)
