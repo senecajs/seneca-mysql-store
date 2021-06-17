@@ -300,18 +300,20 @@ function mysql_store (options) {
     },
 
     load: function (args, done) {
-      var seneca = this
+      // var seneca = this
 
       var qent = args.qent
       var q = args.q
 
       return findEnt(qent, q, function (err, res) {
         if (err) {
-          seneca.log.error('load', 'Error while fetching the entity:', err)
+          // TODO: Investigate the crash.
+          // seneca.log.error('load', 'Error while fetching the entity:', err)
           return done(err)
         }
 
-        seneca.log.debug('load', res)
+        // TODO: Investigate the crash.
+        // seneca.log.debug('load', res)
 
         return done(null, res)
       })
@@ -352,39 +354,38 @@ function mysql_store (options) {
       var q = args.q
 
       if (q.load$) {
-        store.load(args, function (err, row) {
+        store.load(args, function (err, ent) {
           if (err) {
             return cb(err)
           }
 
-          if (!row) {
+          if (!ent) {
             return cb()
           }
-          executeRemove(args, row)
+          executeRemove(args, ent)
         })
       }
       else {
         executeRemove(args)
       }
 
-      function executeRemove (args, row) {
-        seneca.act({role: actionRole, hook: 'remove', target: store.name}, args, function (err, queryObj) {
-          var query = queryObj.query
+      function executeRemove (args, outEnt) {
+        var qent = args.qent
+        var q = args.q
+
+        var query = QueryBuilder.deletestm(qent, q)
+
+        return execQuery(query, function (err, result) {
           if (err) {
             return cb(err)
           }
-          execQuery(query, function (err, result) {
-            if (err) {
-              return cb(err)
-            }
 
-            if (q.load$) {
-              cb(err, row)
-            }
-            else {
-              cb(err)
-            }
-          })
+          if (q.load$) {
+            cb(err, outEnt)
+          }
+          else {
+            cb(err)
+          }
         })
       }
     },
@@ -458,14 +459,6 @@ function mysql_store (options) {
       query = QueryBuilder.savestm(ent)
       return done(null, {query: query, operation: 'save'})
     })
-  })
-
-  seneca.add({role: actionRole, hook: 'remove'}, function (args, done) {
-    var qent = args.qent
-    var q = args.q
-
-    var query = QueryBuilder.deletestm(qent, q)
-    return done(null, {query: query})
   })
 
   seneca.add({role: actionRole, hook: 'generate_id', target: store.name}, function (args, done) {
