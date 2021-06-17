@@ -77,6 +77,8 @@ function mysql_store (options) {
 
   // Try to reconnect.<br>
   // If error then increase time to wait and try again
+  /* TODO: QUESTION: What do we do with this?
+   *
   var reconnect = function () {
     configure(internals.spec, function (err, me) {
       if (err) {
@@ -92,6 +94,7 @@ function mysql_store (options) {
       }
     })
   }
+  */
 
 
   // Configure the store - create a new store specific connection object<br>
@@ -150,7 +153,7 @@ function mysql_store (options) {
     }
   }
 
-  function findEnt(ent, q, done) {
+  function findEnt (ent, q, done) {
     try {
       var query = buildLoadStm(ent, q)
 
@@ -165,21 +168,71 @@ function mysql_store (options) {
 
         return done(null, null)
       })
-    } catch (err) {
+    }
+    catch (err) {
       return done(err)
     }
   }
 
-  function buildLoadStm(ent, q) {
+  function listEnts (ent, q, done) {
+    try {
+      var query = buildListStm(ent, q)
+
+      return execQuery(query, function (err, rows) {
+        if (err) {
+          return done(err)
+        }
+
+        var list = rows.map(function (row) {
+          return makeEntOfRow(row, ent)
+        })
+
+        return done(null, list)
+      })
+    }
+    catch (err) {
+      return done(err)
+    }
+  }
+
+  function buildLoadStm (ent, q) {
     var loadQ = _.clone(q)
     loadQ.limit$ = 1
 
     return QueryBuilder.selectstm(ent, loadQ)
   }
 
+  function buildListStm (ent, q) {
+    var cq = _.clone(q)
+    stripInvalidLimitInPlace(cq)
+    stripInvalidSkipInPlace(cq)
+
+    return QueryBuilder.selectstm(ent, cq)
+  }
+
+  function stripInvalidLimitInPlace (q) {
+    if (Array.isArray(q)) {
+      return
+    }
+
+    if (!(typeof q.limit$ === 'number' && q.limit$ >= 0)) {
+      delete q.limit$
+    }
+  }
+
+  function stripInvalidSkipInPlace (q) {
+    if (Array.isArray(q)) {
+      return
+    }
+
+    if (!(typeof q.skip$ === 'number' && q.skip$ >= 0)) {
+      delete q.skip$
+    }
+  }
+
   // TODO: Remove this adapter.
   //
-  function makeEntOfRow(row, ent) {
+  function makeEntOfRow (row, ent) {
     return RelationalStore.makeent(ent, row)
   }
 
@@ -239,19 +292,13 @@ function mysql_store (options) {
           }
 
           // TODO: Investigate a crash on this line:
-          //seneca.log.debug(args.tag$, operation, args.ent)
+          // seneca.log.debug(args.tag$, operation, args.ent)
 
           return done(null, args.ent)
         })
       })
     },
 
-    // Load first matching item based on id<br>
-    // params<br>
-    // <ul>
-    // <li>args - of the form { ent: { id: , ..entitiy data..} }<br>
-    // <li>done - callback<br>
-    // </ul>
     load: function (args, done) {
       var seneca = this
 
@@ -271,48 +318,21 @@ function mysql_store (options) {
     },
 
 
-    // Return a list of object based on the supplied query, if no query is supplied
-    // then 'select * from ...'<br>
-    // Notes: trivial implementation and unlikely to perform well due to list copy
-    //        also only takes the first page of results from simple DB should in fact
-    //        follow paging model<br>
-    // params:<br>
-    // <ul>
-    // <li>args - of the form { ent: { id: , ..entitiy data..} }<br>
-    // <li>cb - callback<br>
-    // a=1, b=2 simple<br>
-    // next paging is optional in simpledb<br>
-    // limit$ -><br>
-    // use native$<br>
-    // </ul>
     list: function (args, done) {
-      Assert(args)
-      Assert(done)
-      Assert(args.qent)
-      Assert(args.q)
+      var seneca = this
 
       var qent = args.qent
+      var q = args.q
 
-      seneca.act({role: actionRole, hook: 'list', target: store.name}, args, function (err, queryObj) {
-        var query = queryObj.query
-
+      return listEnts(qent, q, function (err, res) {
         if (err) {
-          seneca.log.error(query, err)
-          return done(err, {code: 'list', tag: args.tag$, store: store.name, query: query, error: err})
+          seneca.log.error('list', 'Error while listing the entities:', err)
+          return done(err)
         }
 
-        execQuery(query, function (err, results) {
-          if (err) {
-            return done(err)
-          }
+        seneca.log.debug('list', q, res.length)
 
-          var list = []
-          results.forEach(function (row) {
-            var ent = RelationalStore.makeent(qent, row)
-            list.push(ent)
-          })
-          done(null, list)
-        })
+        return done(null, res)
       })
     },
 
@@ -405,48 +425,6 @@ function mysql_store (options) {
     QueryBuilder.selectstm(qent, q, function (err, query) {
       return done(err, {query: query})
     })
-  })
-
-  seneca.add({role: actionRole, hook: 'list'}, function (args, done) {
-    var qent = args.qent
-    var q = args.q
-
-    buildSelectStatement(q, function (err, query) {
-      return done(err, {query: query})
-    })
-
-    function buildSelectStatement (q, done) {
-      var query
-
-      if (_.isString(q)) {
-        return done(null, q)
-      }
-      else if (_.isArray(q)) {
-        // first element in array should be query, the other being values
-        if (q.length === 0) {
-          var errorDetails = {
-            message: 'Invalid query',
-            query: q
-          }
-          seneca.log.error('Invalid query')
-          return done(errorDetails)
-        }
-        query = {}
-        // query.text = QueryBuilder.fixPrepStatement(q[0])
-        query.text = q[0]
-        query.values = _.clone(q)
-        query.values.splice(0, 1)
-        return done(null, query)
-      }
-      else {
-        if (q.ids) {
-          return done(null, QueryBuilder.selectstmOr(qent, q))
-        }
-        else {
-          QueryBuilder.selectstm(qent, q, done)
-        }
-      }
-    }
   })
 
   seneca.add({role: actionRole, hook: 'save'}, function (args, done) {

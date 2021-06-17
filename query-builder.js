@@ -277,7 +277,8 @@ function selectstm (qent, q, selectFields = null) {
   if (specialOpsVal['fields$'] && _.isArray(specialOpsVal['fields$']) && specialOpsVal['fields$'].length > 0) {
     what = ' ' + specialOpsVal['fields$'].join(', ')
     what += ', id '
-  } else if (null != selectFields) {
+  }
+  else if (null != selectFields) {
     if (Array.isArray(selectFields)) {
       var columns = selectFields
 
@@ -286,9 +287,11 @@ function selectstm (qent, q, selectFields = null) {
       })
 
       what = escapedColumns.join(', ')
-    } else if (selectFields === '*') {
+    }
+    else if (selectFields === '*') {
       what = selectFields
-    } else {
+    }
+    else {
       throw new Error('The optional `selectFields` arg, if given, must be either an array or a "*"')
     }
   }
