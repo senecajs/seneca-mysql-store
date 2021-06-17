@@ -243,7 +243,7 @@ function deletestm (qent, q) {
   return stm
 }
 
-function selectstm (qent, q) {
+function selectstm (qent, q, selectFields = null) {
   var specialOps = ['fields$']
   var specialOpsVal = {}
 
@@ -259,11 +259,12 @@ function selectstm (qent, q) {
   var table = RelationalStore.tablename(qent)
   var entp = RelationalStore.makeentp(qent)
 
+
   var w = whereargs(entp, q)
 
   var response = buildQueryFromExpression(entp, w)
   if (response.err) {
-    return done(response.err)
+    throw response.err
   }
 
   var wherestr = response.data
@@ -276,11 +277,23 @@ function selectstm (qent, q) {
   if (specialOpsVal['fields$'] && _.isArray(specialOpsVal['fields$']) && specialOpsVal['fields$'].length > 0) {
     what = ' ' + specialOpsVal['fields$'].join(', ')
     what += ', id '
+  } else if (null != selectFields) {
+    if (Array.isArray(selectFields)) {
+      var columns = selectFields
+
+      var escapedColumns = columns.map(function (col) {
+        return RelationalStore.escapeColumn(col)
+      })
+
+      what = escapedColumns.join(', ')
+    } else if (selectFields === '*') {
+      what = selectFields
+    } else {
+      throw new Error('The optional `selectFields` arg, if given, must be either an array or a "*"')
+    }
   }
 
-  stm.text = 'SELECT ' + what + ' FROM ' + RelationalStore.escapeStr(table) +
-    (wherestr ? ' WHERE ' + wherestr : '') + RelationalStore.escapeStr(metastr)
-
+  stm.text = 'SELECT ' + what + ' FROM ' + RelationalStore.escapeStr(table) + (wherestr ? ' WHERE ' + wherestr : '') + RelationalStore.escapeStr(metastr)
   stm.values = values
 
   return stm
