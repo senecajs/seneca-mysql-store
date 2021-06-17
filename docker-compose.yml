@@ -1,7 +1,10 @@
 mysql:
-  build: ./docker
+  image: mysql:5.7
   ports:
     - "3306:3306"
+  volumes:
+    - ./test/support/db:/docker-entrypoint-initdb.d
+  working_dir: /var/mysql
   environment:
     MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
     MYSQL_DATABASE: "senecatest"
