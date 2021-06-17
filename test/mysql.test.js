@@ -16,7 +16,7 @@ var Fs = require('fs')
 
 var Lab = require('lab')
 var lab = exports.lab = Lab.script()
-var before = lab.before
+const { before, after } = lab
 var describe = lab.describe
 
 var dbConfig
@@ -42,6 +42,10 @@ describe('MySQL suite tests ', function () {
   before({}, function (done) {
     si.use(require('../mysql-store.js'), dbConfig)
     si.ready(done)
+  })
+
+  after({}, function (done) {
+    si.close(done)
   })
 
   Shared.basictest({
@@ -89,6 +93,10 @@ describe('MySQL autoincrement tests ', function () {
   before({}, function (done) {
     si2.use(require('../mysql-store.js'), incrementConfig)
     si2.ready(done)
+  })
+
+  after({}, function (done) {
+    si2.close(done)
   })
 
   Autoincrement.autoincrementTest({

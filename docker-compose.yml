@@ -6,7 +6,5 @@ mysql:
     - ./test/support/db:/docker-entrypoint-initdb.d
   working_dir: /var/mysql
   environment:
-    MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+    MYSQL_ROOT_PASSWORD: "itsasekret_85a96vbFdh"
     MYSQL_DATABASE: "senecatest"
-    MYSQL_USER: "senecatest"
-    MYSQL_PASSWORD: "senecatest"
