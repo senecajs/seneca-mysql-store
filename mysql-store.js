@@ -47,7 +47,7 @@ function mysql_store (options) {
           log.err = err
         }
 
-        seneca.log(internals.opts.query_log_level, internals.name, log)
+        seneca.log[internals.opts.query_log_level || 'debug'](internals.name, log)
 
         return cb.apply(this, arguments)
       }
@@ -80,7 +80,7 @@ function mysql_store (options) {
   var reconnect = function () {
     configure(internals.spec, function (err, me) {
       if (err) {
-        seneca.log('db reconnect (wait ' + internals.opts.minwait + 'ms) failed: ', err)
+        seneca.log.debug('db reconnect (wait ' + internals.opts.minwait + 'ms) failed: ', err)
         internals.waitmillis = Math.min(2 * internals.waitmillis, internals.opts.maxwait)
         setTimeout(function () {
           reconnect()
@@ -88,7 +88,7 @@ function mysql_store (options) {
       }
       else {
         internals.waitmillis = internals.opts.minwait
-        seneca.log('reconnect ok')
+        seneca.log.debug('reconnect ok')
       }
     })
   }
@@ -135,7 +135,7 @@ function mysql_store (options) {
       }
 
       internals.waitmillis = internals.opts.minwait
-      seneca.log({tag$: 'init'}, 'db open and authed for ' + conf.username)
+      seneca.log.debug({tag$: 'init'}, 'db open and authed for ' + conf.username)
       conn.release()
       cb(null, store)
     })
@@ -205,7 +205,9 @@ function mysql_store (options) {
             args.ent.id = res.insertId
           }
 
-          seneca.log(args.tag$, operation, args.ent)
+          // TODO: Investigate a crash on this line:
+          //seneca.log.debug(args.tag$, operation, args.ent)
+
           return done(null, args.ent)
         })
       })
@@ -237,13 +239,14 @@ function mysql_store (options) {
 
         execQuery(query, function (err, res, fields) {
           if (err) {
-            seneca.log(args.tag$, 'load', err)
+            seneca.log.debug(args.tag$, 'load', err)
             return done(err)
           }
 
           var ent = RelationalStore.makeent(qent, res[0])
 
-          seneca.log(args.tag$, 'load', ent)
+          // TODO: Investigate a crash on this line:
+          //seneca.log.debug(args.tag$, 'load', ent)
 
           done(null, ent)
         })
@@ -368,7 +371,7 @@ function mysql_store (options) {
   seneca.add({init: store.name, tag: meta.tag}, function (args, done) {
     configure(internals.opts, function (err) {
       if (err) {
-        console.log('err: ', err)
+        seneca.log.error('err: ', err)
         throw Eraro('entity/configure', 'store: ' + store.name, 'error: ' + err, 'desc: ' + internals.desc)
       }
       else done()
