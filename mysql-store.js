@@ -195,6 +195,68 @@ function mysql_store (options) {
     }
   }
 
+  function insertEnt (ent, done) {
+    var query = QueryBuilder.savestm(ent)
+
+    return execQuery(query, function (err, res) {
+      if (err) {
+        return done(err)
+      }
+
+      return findEnt(ent, { id: ent.id }, done)
+    })
+  }
+
+  function updateEnt (ent, schema, opts, done) {
+    try {
+      var merge = shouldMerge(ent, opts)
+      var query = QueryBuilder.updatestm(ent, schema, { merge })
+
+      return execQuery(query, done)
+    }
+    catch (err) {
+      return done(err)
+    }
+  }
+
+  function generateId (seneca, target, done) {
+    return seneca.act({ role: actionRole, hook: 'generate_id', target: target }, function (err, res) {
+      if (err) {
+        return done(err)
+      }
+
+      var newId = res.id
+
+      return done(null, newId)
+    })
+  }
+
+  function shouldMerge (ent, options) {
+    if ('merge$' in ent) {
+      return Boolean(ent.merge$)
+    }
+
+    if (options && ('merge' in options)) {
+      return Boolean(options.merge)
+    }
+
+    return true
+  }
+
+  function getSchema (ent, done) {
+    var query = QueryBuilder.schemastm(ent)
+
+    return execQuery(query, function (err, res) {
+      if (err) {
+        return done(err)
+      }
+
+      var schema = res.rows
+
+      return done(null, schema)
+    })
+  }
+
   function buildLoadStm (ent, q) {
     var loadQ = _.clone(q)
     loadQ.limit$ = 1
@@ -203,6 +265,12 @@ function mysql_store (options) {
   }
 
   function buildListStm (ent, q) {
+    // TODO: Tidy up.
+    //
+    if (Array.isArray(q)) {
+      return QueryBuilder.selectwhereidinstm(ent, q)
+    }
+
     var cq = _.clone(q)
     stripInvalidLimitInPlace(cq)
     stripInvalidSkipInPlace(cq)
@@ -258,45 +326,117 @@ function mysql_store (options) {
     },
 
 
-    // Save the data as specified in the entitiy block on the arguments object<br>
-    // params<br>
-    // <ul>
-    // <li>args - of the form { ent: { id: , ..entitiy data..} }<br>
-    // <li>done - callback
-    // </ul>
     save: function (args, done) {
-      Assert(args)
-      Assert(done)
-      Assert(args.ent)
-
       var seneca = this
-      var autoIncrement = internals.opts.auto_increment || false
 
-      seneca.act({role: actionRole, hook: 'save', target: store.name, auto_increment: autoIncrement}, args, function (err, queryObj) {
-        var query = queryObj.query
-        var operation = queryObj.operation
+      var ent = args.ent
+      var q = args.q
 
+      var autoIncrement = q.auto_increment$ || false
+
+      return getSchema(ent, function (err, schema) {
         if (err) {
-          seneca.log.error('MySQL save error', err)
-          return done(err, {code: operation, tag: args.tag$, store: store.name, query: query, error: err})
+          seneca.log.error('save', 'Error while pulling the schema:', err)
+          return done(err)
         }
 
-        execQuery(query, function (err, res) {
+
+        if (isUpdate(ent)) {
+          return updateEnt(ent, schema, opts, function (err, res) {
+            if (err) {
+              seneca.log.error('save/update', 'Error while updating the entity:', err)
+              return done(err)
+            }
+
+            var updatedAnything = res.affectedRows > 0
+
+            if (!updatedAnything) {
+              return insertEnt(ent, function (err, res) {
+                if (err) {
+                  seneca.log.error('save/insert', 'Error while inserting the entity:', err)
+                  return done(err)
+                }
+
+                seneca.log.debug('save/insert', res)
+
+                return done(null, res)
+              })
+            }
+
+            return findEnt(ent, { id: ent.id }, function (err, res) {
+              if (err) {
+                seneca.log.error('save/update', 'Error while fetching the updated entity:', err)
+                return done(err)
+              }
+
+              seneca.log.debug('save/update', res)
+
+              return done(null, res)
+            })
+          })
+        }
+
+
+        return generateId(seneca, store.name, function (err, generatedId) {
           if (err) {
-            seneca.log.error(query.text, query.values, err)
-            return done(err, {code: operation, tag: args.tag$, store: store.name, query: query, error: err})
+            seneca.log.error('save/insert', 'Error while generating an id for the entity:', err)
+            return done(err)
           }
 
-          if (!!args.ent && autoIncrement && res.insertId) {
-            args.ent.id = res.insertId
+
+          var newId = null == ent.id$
+            ? generatedId
+            : ent.id$
+
+
+          var newEnt = ent.clone$()
+
+          if (!autoIncrement) {
+            newEnt.id = newId
           }
 
-          // TODO: Investigate a crash on this line:
-          // seneca.log.debug(args.tag$, operation, args.ent)
 
-          return done(null, args.ent)
+          /* TODO
+          if (isUpsert(ent, q)) {
+            return upsertEnt(newEnt, q, function (err, res) {
+              if (err) {
+                seneca.log.error('save/upsert', 'Error while inserting the entity:', err)
+                return done(err)
+              }
+
+              seneca.log.debug('save/upsert', res)
+
+              return done(null, res)
+            })
+          }
+          */
+
+
+          return insertEnt(newEnt, function (err, res) {
+            if (err) {
+              seneca.log.error('save/insert', 'Error while inserting the entity:', err)
+              return done(err)
+            }
+
+            seneca.log.debug('save/insert', res)
+
+            return done(null, res)
+          })
         })
       })
+
+      /* TODO:
+      function isUpsert(ent, q) {
+        return !isUpdate(ent) &&
+          Array.isArray(q.upsert$) &&
+          internals.cleanArray(q.upsert$).length > 0
+      }
+      */
+
+
+      function isUpdate (ent) {
+        return null != ent.id
+      }
     },
 
     load: function (args, done) {
@@ -338,56 +478,54 @@ function mysql_store (options) {
       })
     },
 
-    // Delete an item <br>
-    // params<br>
-    // <ul>
-    // <li>args - of the form { ent: { id: , ..entitiy data..} }<br>
-    // <li>cb - callback<br>
-    // { 'all$': true }
-    // </ul>
-    remove: function (args, cb) {
-      Assert(args)
-      Assert(cb)
-      Assert(args.qent)
-      Assert(args.q)
+    remove: function (args, done) {
+      const { q, qent } = args
 
-      var q = args.q
+      if (q.all$) {
+        const query = QueryBuilder.deletestm(qent, q)
 
-      if (q.load$) {
-        store.load(args, function (err, ent) {
+        // TODO: seneca.log.debug
+        //
+        return execQuery(query, function (err) {
           if (err) {
-            return cb(err)
+            // TODO: Investigate the crash.
+            // seneca.log.error('load', 'Error while fetching the entity:', err)
+            return done(err)
           }
 
-          if (!ent) {
-            return cb()
-          }
-          executeRemove(args, ent)
+          return done()
         })
       }
-      else {
-        executeRemove(args)
-      }
 
-      function executeRemove (args, outEnt) {
-        var qent = args.qent
-        var q = args.q
+      return findEnt(qent, q, function (err, delEnt) {
+        if (err) {
+          // TODO: Investigate the crash.
+          // seneca.log.error('load', 'Error while fetching the entity:', err)
+          return done(err)
+        }
 
-        var query = QueryBuilder.deletestm(qent, q)
+        if (!delEnt) {
+          return done()
+        }
 
-        return execQuery(query, function (err, result) {
+        const query = QueryBuilder.deleteentstm(delEnt)
+
+        // TODO: seneca.log.debug
+        //
+        return execQuery(query, function (err) {
           if (err) {
-            return cb(err)
+            // TODO: Investigate the crash.
+            // seneca.log.error('load', 'Error while fetching the entity:', err)
+            return done(err)
           }
 
           if (q.load$) {
-            cb(err, outEnt)
+            return done(null, delEnt)
           }
-          else {
-            cb(err)
-          }
+
+          return done(null, null)
         })
-      }
+      })
     },
 
     // Return the underlying native connection object
@@ -425,39 +563,6 @@ function mysql_store (options) {
 
     QueryBuilder.selectstm(qent, q, function (err, query) {
       return done(err, {query: query})
-    })
-  })
-
-  seneca.add({role: actionRole, hook: 'save'}, function (args, done) {
-    var ent = args.ent
-    var update = !!ent.id
-    var query
-    var autoIncrement = args.auto_increment || false
-
-    if (update) {
-      query = QueryBuilder.updatestm(ent)
-      return done(null, {query: query, operation: 'update'})
-    }
-
-    if (ent.id$) {
-      ent.id = ent.id$
-      query = QueryBuilder.savestm(ent)
-      return done(null, {query: query, operation: 'save'})
-    }
-
-    if (autoIncrement) {
-      query = QueryBuilder.savestm(ent)
-      return done(null, {query: query, operation: 'save'})
-    }
-
-    seneca.act({role: actionRole, hook: 'generate_id', target: args.target}, function (err, result) {
-      if (err) {
-        seneca.log.error('hook generate_id failed')
-        return done(err)
-      }
-      ent.id = result.id
-      query = QueryBuilder.savestm(ent)
-      return done(null, {query: query, operation: 'save'})
     })
   })
 

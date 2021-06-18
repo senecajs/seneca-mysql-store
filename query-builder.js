@@ -173,30 +173,98 @@ function savestm (ent) {
   return stm
 }
 
-function updatestm (ent) {
-  var stm = {}
+function updatestm (ent, schema, opts = {}) {
+  var shouldMerge = 'merge' in opts ? opts.merge : true
 
   var table = RelationalStore.tablename(ent)
   var entp = RelationalStore.makeentp(ent)
-  var fields = _.keys(entp)
 
-  var values = []
-  var params = []
-  // var cnt = 0
+  if (shouldMerge) {
+    const fields = fieldsRequestedForUpdate(entp)
+    const values = valuesForMerge(fields, entp)
 
-  fields.forEach(function (field) {
-    if (field.indexOf('$') !== -1) {
-      return
+    return buildStatement(fields, values)
+  }
+
+  const fields = allEntityFields(schema)
+  const values = valuesForReplacement(fields, entp)
+
+  return buildStatement(fields, values)
+
+
+  function fieldsRequestedForUpdate (entp) {
+    var fields = _.keys(entp)
+
+    var publicFields = fields.filter(function (field) {
+      return field.indexOf('$') === -1
+    })
+
+    var publicDefinedFields = publicFields.filter(function (field) {
+      return !_.isUndefined(entp[field])
+    })
+
+    return publicDefinedFields
+  }
+
+  function valuesForMerge (fields, entp) {
+    return fields.map(function (field) {
+      return entp[field]
+    })
+  }
+
+  function allEntityFields (schema) {
+    return schema.map(function (row) {
+      return row.column_name
+    })
+  }
+
+  function valuesForReplacement (fields, entp) {
+    return fields.map(function (field) {
+      return field in entp ? entp[field] : null
+    })
+  }
+
+  function buildStatement (fields, values) {
+    var params = fields.map(function (field, i) { return '?' })
+
+
+    var paramsForUpdate = fields.map(function (_, i) {
+      var key = fields[i]
+      var value = params[i]
+
+      return [key, value]
+    })
+
+    var escapedParamsForUpdate = paramsForUpdate.map(function (kv) {
+      var col = kv[0]
+      var escapedColumn = RelationalStore.escapeColumn(col)
+
+      var valuePlaceholder = kv[1]
+
+      return [escapedColumn, valuePlaceholder].join('=')
+    })
+
+
+    var stm = {
+      text: 'UPDATE ' + RelationalStore.escapeStr(table) + ' SET ' +
+        escapedParamsForUpdate.join(', ') +
+        " WHERE id='" + RelationalStore.escapeStr(ent.id) + "'",
+
+      values: values
     }
 
-    if (!_.isUndefined(entp[field])) {
-      values.push(entp[field])
-      params.push(RelationalStore.escapeStr(RelationalStore.camelToSnakeCase(field)) + '=?')
-    }
-  })
 
-  stm.text = 'UPDATE ' + RelationalStore.escapeStr(table) + ' SET ' + params + " WHERE id='" + RelationalStore.escapeStr(ent.id) + "'"
-  stm.values = values
+    return stm
+  }
+}
+
+function deleteentstm (ent) {
+  var stm = {}
+
+  var table = RelationalStore.tablename(ent)
+
+  stm.text = 'DELETE FROM ' + RelationalStore.escapeStr(table) + ' WHERE id=?'
+  stm.values = [ent.id]
 
   return stm
 }
@@ -239,6 +307,22 @@ function deletestm (qent, q) {
 
   stm.text = 'DELETE FROM ' + RelationalStore.escapeStr(table) + wherestr
   stm.values = values
+
+  return stm
+}
+
+// TODO: Tidy up or merge with selectstm.
+//
+function selectwhereidinstm (qent, q) {
+  var table = RelationalStore.tablename(qent)
+
+
+  var stm = {}
+
+  stm.text = 'SELECT * FROM ' + RelationalStore.escapeStr(table) +
+    ' WHERE id IN (' + q.map(_ => '?') + ')'
+
+  stm.values = q
 
   return stm
 }
@@ -368,9 +452,23 @@ function metaquery (qent, q) {
   return mq
 }
 
+function schemastm (ent) {
+  var table = RelationalStore.tablename(ent)
+
+  var text =
+    'SELECT column_name, data_type ' +
+    'FROM information_schema.columns ' +
+    'WHERE table_name = ' + "'" + RelationalStore.escapeStr(table) + "'"
+
+  return { text, values: [] }
+}
+
 module.exports.fixPrepStatement = fixPrepStatement
 module.exports.selectstm = selectstm
+module.exports.selectwhereidinstm = selectwhereidinstm
 module.exports.selectstmOr = selectstmOr
 module.exports.deletestm = deletestm
+module.exports.deleteentstm = deleteentstm
 module.exports.savestm = savestm
 module.exports.updatestm = updatestm
+module.exports.schemastm = schemastm
