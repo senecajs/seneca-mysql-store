@@ -463,8 +463,22 @@ function schemastm (ent) {
   return { text, values: [] }
 }
 
+function nativestm (q) {
+  if ('string' === typeof q.native$) {
+    const sql = q.native$
+
+    return { text: sql, values: [] }
+  }
+
+
+  const [sql, ...values] = q.native$
+
+  return { text: sql, values }
+}
+
 module.exports.fixPrepStatement = fixPrepStatement
 module.exports.selectstm = selectstm
+module.exports.nativestm = nativestm
 module.exports.selectwhereidinstm = selectwhereidinstm
 module.exports.selectstmOr = selectstmOr
 module.exports.deletestm = deletestm

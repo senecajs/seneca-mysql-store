@@ -272,6 +272,10 @@ function mysql_store (options) {
       return QueryBuilder.selectwhereidinstm(ent, q)
     }
 
+    if (null != q.native$) {
+      return QueryBuilder.nativestm(q)
+    }
+
     var cq = _.clone(q)
     stripInvalidLimitInPlace(cq)
     stripInvalidSkipInPlace(cq)
