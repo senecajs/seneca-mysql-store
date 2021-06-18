@@ -1,6 +1,7 @@
 'use strict'
 
 var Assert = require('assert')
+const Async = require('async')
 var _ = require('lodash')
 var MySQL = require('mysql')
 var Uuid = require('node-uuid')
@@ -445,7 +446,14 @@ function mysql_store (options) {
       var qent = args.qent
       var q = args.q
 
-      return findEnt(qent, q, function (err, res) {
+
+      const cq = _.clone(q)
+
+      stripInvalidLimitInPlace(cq)
+      stripInvalidSkipInPlace(cq)
+
+
+      return findEnt(qent, cq, function (err, res) {
         if (err) {
           // TODO: Investigate the crash.
           // seneca.log.error('load', 'Error while fetching the entity:', err)
@@ -478,29 +486,47 @@ function mysql_store (options) {
       })
     },
 
+    // TODO:
+    // - Optimize - currently it's SUPER SLOW.
+    // - Tidy up
+    //
     remove: function (args, done) {
       const { q, qent } = args
 
-      if (q.all$) {
-        const query = QueryBuilder.deletestm(qent, q)
 
-        // TODO: seneca.log.debug
-        //
-        return execQuery(query, function (err) {
+      const cq = _.clone(q)
+
+      stripInvalidLimitInPlace(cq)
+      stripInvalidSkipInPlace(cq)
+
+
+      if (cq.all$) {
+        return listEnts(qent, cq, function (err, delEnts) {
           if (err) {
-            // TODO: Investigate the crash.
-            // seneca.log.error('load', 'Error while fetching the entity:', err)
             return done(err)
           }
 
-          return done()
+          return Async.parallel(
+            delEnts.map(ent => {
+              return done => {
+                const query = QueryBuilder.deleteentstm(ent)
+                return execQuery(query, done)
+              }
+            }),
+            
+            (err) => {
+              if (err) {
+                return done(err)
+              }
+
+              return done()
+            }
+          )
         })
       }
 
-      return findEnt(qent, q, function (err, delEnt) {
+      return findEnt(qent, cq, function (err, delEnt) {
         if (err) {
-          // TODO: Investigate the crash.
-          // seneca.log.error('load', 'Error while fetching the entity:', err)
           return done(err)
         }
 
@@ -510,20 +536,16 @@ function mysql_store (options) {
 
         const query = QueryBuilder.deleteentstm(delEnt)
 
-        // TODO: seneca.log.debug
-        //
-        return execQuery(query, function (err) {
+        return execQuery(query, (err) => {
           if (err) {
-            // TODO: Investigate the crash.
-            // seneca.log.error('load', 'Error while fetching the entity:', err)
             return done(err)
           }
 
-          if (q.load$) {
+          if (cq.load$) {
             return done(null, delEnt)
           }
 
-          return done(null, null)
+          return done()
         })
       })
     },
