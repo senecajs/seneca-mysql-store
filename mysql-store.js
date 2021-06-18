@@ -245,14 +245,12 @@ function mysql_store (options) {
   }
 
   function getSchema (ent, done) {
-    var query = QueryBuilder.schemastm(ent)
+    const query = QueryBuilder.schemastm(ent)
 
-    return execQuery(query, function (err, res) {
+    return execQuery(query, function (err, schema) {
       if (err) {
         return done(err)
       }
-
-      var schema = res.rows
 
       return done(null, schema)
     })

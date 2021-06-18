@@ -22,6 +22,10 @@ const DbConfig = require('./support/db/config')
 describe('MySQL suite tests ', function () {
   const si = makeSeneca({ mysqlStoreOpts: DbConfig })
 
+  const siMerge = makeSeneca({
+    mysqlStoreOpts: Object.assign({}, DbConfig, { merge: false })
+  })
+
   before({}, function (done) {
     si.ready(done)
   })
@@ -30,20 +34,17 @@ describe('MySQL suite tests ', function () {
     si.close(done)
   })
 
-  /*
   Shared.basictest({
     seneca: si,
-    senecaMerge: si_merge,
+    senecaMerge: siMerge,
     script: lab
   })
-  */
 
   Shared.sorttest({
     seneca: si,
     script: lab
   })
 
-  /*
   Shared.limitstest({
     seneca: si,
     script: lab
@@ -58,7 +59,6 @@ describe('MySQL suite tests ', function () {
     seneca: si,
     script: lab
   })
-  */
 })
 
 describe('MySQL autoincrement tests ', function () {
@@ -69,9 +69,7 @@ describe('MySQL autoincrement tests ', function () {
     }
   )
 
-  const si2 = makeSeneca({
-    mysqlStoreOpts: incrementConfig
-  })
+  const si2 = makeSeneca({ mysqlStoreOpts: incrementConfig })
 
 
   before({}, function (done) {
@@ -82,12 +80,10 @@ describe('MySQL autoincrement tests ', function () {
     si2.close(done)
   })
 
-  /*
   Autoincrement.autoincrementTest({
     seneca: si2,
     script: lab
   })
-  */
 })
 
 

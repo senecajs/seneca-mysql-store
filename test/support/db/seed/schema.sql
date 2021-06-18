@@ -13,6 +13,7 @@ CREATE TABLE foo (
   p3 VARCHAR(255),
   x INT,
   y INT,
+  int_arr JSON,
   seneca VARCHAR(125),
 
   PRIMARY KEY(id),
