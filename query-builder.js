@@ -173,6 +173,95 @@ function savestm (ent) {
   return stm
 }
 
+function updatewherestm (q, ent, set) {
+  const table = RelationalStore.tablename(ent)
+  const entp = RelationalStore.makeentp(ent.make$(set))
+
+  const fields = fieldsRequestedForUpdate(entp)
+  const values = valuesForMerge(fields, entp)
+
+
+  var params = fields.map(function (field, i) { return '?' })
+
+
+  var paramsForUpdate = fields.map(function (_, i) {
+    var key = fields[i]
+    var value = params[i]
+
+    return [key, value]
+  })
+
+  var escapedParamsForUpdate = paramsForUpdate.map(function (kv) {
+    var col = kv[0]
+    var escapedColumn = RelationalStore.escapeColumn(col)
+
+    var valuePlaceholder = kv[1]
+
+    return [escapedColumn, valuePlaceholder].join('=')
+  })
+
+
+  var w = whereargs(entp, q)
+  var wherestr = ''
+  var whereparams = []
+  var wherevalues = []
+
+  if (!_.isEmpty(w) && w.params.length > 0) {
+    for (var i = 0; i < w.params.length; i++) {
+      var param = w.params[i]
+      var val = w.values[i]
+
+      if (param.indexOf('$') !== -1) {
+        continue
+      }
+
+      whereparams.push('`' + RelationalStore.escapeStr(RelationalStore.camelToSnakeCase(param)) + '`=?')
+      wherevalues.push('string' === typeof val ? RelationalStore.escapeStr(val) : val)
+    }
+
+    if (params.length > 0) {
+      wherestr = ' WHERE ' + whereparams.join(' AND ')
+    }
+    else {
+      wherestr = ' '
+    }
+  }
+
+  values.splice(values.length, 0, ...wherevalues)
+
+
+  var stm = {
+    text: 'UPDATE ' + RelationalStore.escapeStr(table) + ' SET ' +
+      escapedParamsForUpdate.join(', ') + wherestr,
+
+    values: values
+  }
+
+
+  return stm
+
+
+  function fieldsRequestedForUpdate (entp) {
+    var fields = _.keys(entp)
+
+    var publicFields = fields.filter(function (field) {
+      return field.indexOf('$') === -1
+    })
+
+    var publicDefinedFields = publicFields.filter(function (field) {
+      return !_.isUndefined(entp[field])
+    })
+
+    return publicDefinedFields
+  }
+
+  function valuesForMerge (fields, entp) {
+    return fields.map(function (field) {
+      return entp[field]
+    })
+  }
+}
+
 function updatestm (ent, schema, opts = {}) {
   var shouldMerge = 'merge' in opts ? opts.merge : true
 
@@ -485,4 +574,5 @@ module.exports.deletestm = deletestm
 module.exports.deleteentstm = deleteentstm
 module.exports.savestm = savestm
 module.exports.updatestm = updatestm
+module.exports.updatewherestm = updatewherestm
 module.exports.schemastm = schemastm
