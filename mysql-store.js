@@ -199,12 +199,81 @@ function mysql_store (options) {
   function insertEnt (ent, done) {
     var query = QueryBuilder.savestm(ent)
 
+    //console.dir(query, { depth: 32 }) // dbg
+
     return execQuery(query, function (err, res) {
       if (err) {
         return done(err)
       }
 
       return findEnt(ent, { id: ent.id }, done)
+    })
+  }
+
+  function upsertEnt (upsert_fields, ent, done) {
+    // TODO: Wrap everything here inside a transaction. Otherwise
+    // race conditions will be introduced.
+    //
+
+    const update_q = upsert_fields
+      .filter(p => null != ent[p])
+      .reduce((h, p) => {
+        h[p] = ent[p]
+        return h
+      }, {})
+
+    if (_.isEmpty(update_q)) {
+      return insertEnt(ent, function (err, out) {
+        if (err) {
+          return done(err)
+        }
+
+        return done(null, out)
+      })
+    }
+
+    // NOTE: This code cannot be replaced with updateEnt. updateEnt updates
+    // records by the id. The id in this `ent` is the new id.
+    //
+    // TODO: Re-consider the logic.
+    //
+    const update_set = ent.data$(false); delete update_set.id
+    const update_query = QueryBuilder.updatewherestm(update_q, ent, update_set)
+
+    return execQuery(update_query, function (err) {
+      if (err) {
+        return done(err)
+      }
+
+      const ins_select_query = QueryBuilder.insertwherenotexistsstm(ent, update_q)
+
+      //console.dir(ins_select_query, { depth: 32 }) // dbg
+
+      return execQuery(ins_select_query, function (err) {
+        if (err) {
+          return done(err)
+        }
+
+        //console.dir('insert-select ok', { depth: 32 }) // dbg
+
+        // NOTE: Because MySQL does not support "RETURNING", we must fetch
+        // the entity in a separate trip to the db. We can fetch the entity
+        // by the query and not worry about duplicates - this is because
+        // the query is unique by definition, because upserts can only work
+        // for unique keys.
+        //
+        return findEnt(ent, update_q, function (err, out) {
+          //console.dir('aaa', { depth: 32 }) // dbg
+
+          if (err) {
+            return done(err)
+          }
+
+          //console.dir('bbb', { depth: 32 }) // dbg
+
+          return done(null, out)
+        })
+      })
     })
   }
 
@@ -399,9 +468,10 @@ function mysql_store (options) {
           }
 
 
-          /* TODO
-          if (isUpsert(ent, q)) {
-            return upsertEnt(newEnt, q, function (err, res) {
+          const upsertFields = isUpsert(ent, q)
+
+          if (null != upsertFields) {
+            return upsertEnt(upsertFields, newEnt, function (err, res) {
               if (err) {
                 seneca.log.error('save/upsert', 'Error while inserting the entity:', err)
                 return done(err)
@@ -412,7 +482,6 @@ function mysql_store (options) {
               return done(null, res)
             })
           }
-          */
 
 
           return insertEnt(newEnt, function (err, res) {
@@ -428,13 +497,19 @@ function mysql_store (options) {
         })
       })
 
-      /* TODO:
-      function isUpsert(ent, q) {
-        return !isUpdate(ent) &&
-          Array.isArray(q.upsert$) &&
-          internals.cleanArray(q.upsert$).length > 0
+      function isUpsert (ent, q) {
+        if (!Array.isArray(q.upsert$)) {
+          return null
+        }
+
+        const upsertFields = q.upsert$.filter((p) => !p.includes('$'))
+
+        if (0 === upsertFields.length) {
+          return null
+        }
+
+        return upsertFields
       }
-      */
 
 
       function isUpdate (ent) {
@@ -447,6 +522,8 @@ function mysql_store (options) {
 
       var qent = args.qent
       var q = args.q
+
+      //console.dir(q, { depth: 32 }) // dbg
 
 
       const cq = _.clone(q)
@@ -515,7 +592,7 @@ function mysql_store (options) {
                 return execQuery(query, done)
               }
             }),
-            
+
             (err) => {
               if (err) {
                 return done(err)

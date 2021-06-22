@@ -39,7 +39,7 @@ CREATE TABLE players (
   id VARCHAR(36) NOT NULL,
   username VARCHAR(255) NOT NULL,
   points INT DEFAULT NULL,
-  points_history TEXT DEFAULT NULL,
+  points_history JSON DEFAULT NULL,
 
   PRIMARY KEY (id),
   UNIQUE(username)

@@ -173,33 +173,27 @@ function savestm (ent) {
   return stm
 }
 
-function updatewherestm (q, ent, set) {
-  const table = RelationalStore.tablename(ent)
-  const entp = RelationalStore.makeentp(ent.make$(set))
+function insertwherenotexistsstm (ent, q) {
+  var stm = {}
 
-  const fields = fieldsRequestedForUpdate(entp)
-  const values = valuesForMerge(fields, entp)
+  var table = RelationalStore.tablename(ent)
+  var entp = RelationalStore.makeentp(ent)
+  var fields = _.keys(entp)
 
+  var values = []
+  var params = []
 
-  var params = fields.map(function (field, i) { return '?' })
+  // var cnt = 0
 
-
-  var paramsForUpdate = fields.map(function (_, i) {
-    var key = fields[i]
-    var value = params[i]
-
-    return [key, value]
+  var escapedFields = []
+  fields.forEach(function (field) {
+    escapedFields.push('`' + RelationalStore.escapeStr(RelationalStore.camelToSnakeCase(field)) + '`')
+    values.push(entp[field])
+    params.push('?')
   })
 
-  var escapedParamsForUpdate = paramsForUpdate.map(function (kv) {
-    var col = kv[0]
-    var escapedColumn = RelationalStore.escapeColumn(col)
-
-    var valuePlaceholder = kv[1]
-
-    return [escapedColumn, valuePlaceholder].join('=')
-  })
-
+  // BEGIN - where
+  //
 
   var w = whereargs(entp, q)
   var wherestr = ''
@@ -228,6 +222,79 @@ function updatewherestm (q, ent, set) {
   }
 
   values.splice(values.length, 0, ...wherevalues)
+
+  //
+  // END - where
+
+  stm.text = 'INSERT INTO ' + RelationalStore.escapeStr(table) + ' (' + escapedFields +
+    ') SELECT ' + RelationalStore.escapeStr(params) + ' FROM dual ' +
+    'WHERE NOT EXISTS (SELECT * FROM ' + RelationalStore.escapeStr(table) + wherestr + ')'
+
+  stm.values = values
+
+  return stm
+}
+
+function updatewherestm (q, ent, set) {
+  const table = RelationalStore.tablename(ent)
+  const entp = RelationalStore.makeentp(ent.make$(set))
+
+  const fields = fieldsRequestedForUpdate(entp)
+  const values = valuesForMerge(fields, entp)
+
+
+  var params = fields.map(function (field, i) { return '?' })
+
+
+  var paramsForUpdate = fields.map(function (_, i) {
+    var key = fields[i]
+    var value = params[i]
+
+    return [key, value]
+  })
+
+  var escapedParamsForUpdate = paramsForUpdate.map(function (kv) {
+    var col = kv[0]
+    var escapedColumn = RelationalStore.escapeColumn(col)
+
+    var valuePlaceholder = kv[1]
+
+    return [escapedColumn, valuePlaceholder].join('=')
+  })
+
+  // BEGIN - where
+  //
+
+  var w = whereargs(entp, q)
+  var wherestr = ''
+  var whereparams = []
+  var wherevalues = []
+
+  if (!_.isEmpty(w) && w.params.length > 0) {
+    for (var i = 0; i < w.params.length; i++) {
+      var param = w.params[i]
+      var val = w.values[i]
+
+      if (param.indexOf('$') !== -1) {
+        continue
+      }
+
+      whereparams.push('`' + RelationalStore.escapeStr(RelationalStore.camelToSnakeCase(param)) + '`=?')
+      wherevalues.push(val)
+    }
+
+    if (params.length > 0) {
+      wherestr = ' WHERE ' + whereparams.join(' AND ')
+    }
+    else {
+      wherestr = ' '
+    }
+  }
+
+  values.splice(values.length, 0, ...wherevalues)
+
+  //
+  // END - where
 
 
   var stm = {
@@ -573,6 +640,7 @@ module.exports.selectstmOr = selectstmOr
 module.exports.deletestm = deletestm
 module.exports.deleteentstm = deleteentstm
 module.exports.savestm = savestm
+module.exports.insertwherenotexistsstm = insertwherenotexistsstm
 module.exports.updatestm = updatestm
 module.exports.updatewherestm = updatewherestm
 module.exports.schemastm = schemastm

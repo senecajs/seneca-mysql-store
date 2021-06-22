@@ -55,10 +55,49 @@ describe('MySQL suite tests ', function () {
     script: lab
   })
 
+  Shared.upserttest({
+    seneca: si,
+    script: lab
+  })
+
   Extra.extendTest({
     seneca: si,
     script: lab
   })
+})
+
+describe('', function () {
+  const QueryBuilder = require('../query-builder')
+  const si = makeSeneca({ mysqlStoreOpts: DbConfig })
+
+/*
+  describe('updatewherestm', function () {
+    lab.it('', async function () {
+      const q = { email: 'richard@voxgig.com', points: 25 }
+      const ent = si.make('players')
+      const set = { email: 'ceo@voxgig.com', points: 9999 }
+
+      const query = QueryBuilder.updatewherestm(q, ent, set)
+
+      console.dir(query, { depth: 32 }) // dbg
+    })
+  })
+*/
+
+  /*
+  describe('insertwherenotexistsstm', function () {
+    lab.it('', async function () {
+      const ent = si.make('players')
+        .data$({ email: 'ceo@voxgig.com', points: 9999 })
+
+      const q = { email: 'ceo@voxgig.com' }
+
+      const query = QueryBuilder.insertwherenotexistsstm(ent, q)
+
+      console.dir(query, { depth: 32 }) // dbg
+    })
+  })
+  */
 })
 
 describe('MySQL autoincrement tests ', function () {
