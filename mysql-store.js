@@ -145,33 +145,114 @@ function mysql_store (options) {
     })
   }
 
-  function execQuery (query, done) {
+  function execQuery (...args) {
+    const [query, db, done] = (function () {
+      if (2 === args.length) {
+        const [query, done] = args
+        return [query, internals.connectionPool, done]
+      }
+
+      if (3 === args.length) {
+        return args
+      }
+
+      throw new Error(`execQuery did not expect ${args.length} args`)
+    })()
+
     if (_.isString(query)) {
-      internals.connectionPool.query(query, done)
+      db.query(query, done)
     }
     else {
-      internals.connectionPool.query(query.text, query.values, done)
+      db.query(query.text, query.values, done)
     }
   }
 
-  function findEnt (ent, q, done) {
-    try {
-      var query = buildLoadStm(ent, q)
+  function transaction (f, done) {
+    return internals.connectionPool.getConnection(function (err, conn) {
+      if (err) {
+        return done(err)
+      }
 
-      return execQuery(query, function (err, rows) {
+      return conn.beginTransaction(function (err) {
         if (err) {
-          return done(err)
+          return conn.rollback(function () {
+            conn.release()
+            return done(err)
+          })
         }
 
-        if (rows.length > 0) {
-          return done(null, makeEntOfRow(rows[0], ent))
-        }
+        return f(conn, function (err, out) {
+          if (err) {
+            return conn.rollback(function () {
+              conn.release()
+              return done(err)
+            })
+          }
 
-        return done(null, null)
+          return conn.commit(function (err) {
+            if (err) {
+              return conn.rollback(function () {
+                conn.release()
+                return done(err)
+              })
+            }
+
+            conn.release()
+
+            return done(null, out)
+          })
+        })
       })
+    })
+  }
+
+  function findEnt (...args) {
+    if (3 === args.length) {
+      const [ent, q, done] = args
+
+      try {
+        var query = buildLoadStm(ent, q)
+
+        return execQuery(query, function (err, rows) {
+          if (err) {
+            return done(err)
+          }
+
+          if (rows.length > 0) {
+            return done(null, makeEntOfRow(rows[0], ent))
+          }
+
+          return done(null, null)
+        })
+      }
+      catch (err) {
+        return done(err)
+      }
     }
-    catch (err) {
-      return done(err)
+    else if (4 === args.length) {
+      const [ent, q, conn, done] = args
+
+      try {
+        var query = buildLoadStm(ent, q)
+
+        return execQuery(query, conn, function (err, rows) {
+          if (err) {
+            return done(err)
+          }
+
+          if (rows.length > 0) {
+            return done(null, makeEntOfRow(rows[0], ent))
+          }
+
+          return done(null, null)
+        })
+      }
+      catch (err) {
+        return done(err)
+      }
+    }
+    else {
+      Assert.fail(`Unexpected num of args: ${args.length}`)
     }
   }
 
@@ -196,85 +277,88 @@ function mysql_store (options) {
     }
   }
 
-  function insertEnt (ent, done) {
-    var query = QueryBuilder.savestm(ent)
+  function insertEnt (...args) {
+    if (2 === args.length) {
+      const ent = args[0]
+      const done = args[args.length - 1]
 
-    //console.dir(query, { depth: 32 }) // dbg
+      const query = QueryBuilder.savestm(ent)
 
-    return execQuery(query, function (err, res) {
-      if (err) {
-        return done(err)
-      }
+      return execQuery(query, function (err, res) {
+        if (err) {
+          return done(err)
+        }
 
-      return findEnt(ent, { id: ent.id }, done)
-    })
+        return findEnt(ent, { id: ent.id }, done)
+      })
+    }
+    else if (3 === args.length) {
+      const ent = args[0]
+      const conn = args[1]
+      const done = args[args.length - 1]
+
+      const query = QueryBuilder.savestm(ent)
+
+      return execQuery(query, conn, function (err, res) {
+        if (err) {
+          return done(err)
+        }
+
+        return findEnt(ent, { id: ent.id }, conn, done)
+      })
+    }
+    else {
+      Assert.fail(`Unexpected num of args: ${args.length}`)
+    }
   }
 
   function upsertEnt (upsert_fields, ent, done) {
-    // TODO: Wrap everything here inside a transaction. Otherwise
-    // race conditions will be introduced.
-    //
+    return transaction(function (conn, end_of_transaction) {
+      const update_q = upsert_fields
+        .filter(p => null != ent[p])
+        .reduce((h, p) => {
+          h[p] = ent[p]
+          return h
+        }, {})
 
-    const update_q = upsert_fields
-      .filter(p => null != ent[p])
-      .reduce((h, p) => {
-        h[p] = ent[p]
-        return h
-      }, {})
-
-    if (_.isEmpty(update_q)) {
-      return insertEnt(ent, function (err, out) {
-        if (err) {
-          return done(err)
-        }
-
-        return done(null, out)
-      })
-    }
-
-    // NOTE: This code cannot be replaced with updateEnt. updateEnt updates
-    // records by the id. The id in this `ent` is the new id.
-    //
-    // TODO: Re-consider the logic.
-    //
-    const update_set = ent.data$(false); delete update_set.id
-    const update_query = QueryBuilder.updatewherestm(update_q, ent, update_set)
-
-    return execQuery(update_query, function (err) {
-      if (err) {
-        return done(err)
+      if (_.isEmpty(update_q)) {
+        return insertEnt(ent, conn, end_of_transaction)
       }
 
-      const ins_select_query = QueryBuilder.insertwherenotexistsstm(ent, update_q)
+      // NOTE: This code cannot be replaced with updateEnt. updateEnt updates
+      // records by the id. The id in this `ent` is the new id.
+      //
+      // TODO: Re-consider the logic.
+      //
+      const update_set = ent.data$(false); delete update_set.id
+      const update_query = QueryBuilder.updatewherestm(update_q, ent, update_set)
 
-      //console.dir(ins_select_query, { depth: 32 }) // dbg
-
-      return execQuery(ins_select_query, function (err) {
+      return execQuery(update_query, conn, function (err) {
         if (err) {
-          return done(err)
+          return end_of_transaction(err)
         }
 
-        //console.dir('insert-select ok', { depth: 32 }) // dbg
+        const ins_select_query = QueryBuilder.insertwherenotexistsstm(ent, update_q)
 
-        // NOTE: Because MySQL does not support "RETURNING", we must fetch
-        // the entity in a separate trip to the db. We can fetch the entity
-        // by the query and not worry about duplicates - this is because
-        // the query is unique by definition, because upserts can only work
-        // for unique keys.
-        //
-        return findEnt(ent, update_q, function (err, out) {
-          //console.dir('aaa', { depth: 32 }) // dbg
+        //console.dir(ins_select_query, { depth: 32 }) // dbg
 
+        return execQuery(ins_select_query, conn, function (err) {
           if (err) {
-            return done(err)
+            return end_of_transaction(err)
           }
 
-          //console.dir('bbb', { depth: 32 }) // dbg
+          //console.dir('insert-select ok', { depth: 32 }) // dbg
 
-          return done(null, out)
+          // NOTE: Because MySQL does not support "RETURNING", we must fetch
+          // the entity in a separate trip to the db. We can fetch the entity
+          // by the query and not worry about duplicates - this is because
+          // the query is unique by definition, because upserts can only work
+          // for unique keys.
+          //
+          return findEnt(ent, update_q, conn, end_of_transaction)
         })
       })
-    })
+    }, done)
   }
 
   function updateEnt (ent, schema, opts, done) {
