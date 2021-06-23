@@ -484,100 +484,118 @@ function mysql_store (options) {
 
 
     save: function (args, done) {
-      var seneca = this
+      const seneca = this
+      const { ent, q } = args
+      const ent_table = RelationalStore.tablename(ent)
 
-      var ent = args.ent
-      var q = args.q
+      if (isUpdate(ent)) {
+        const entp = RelationalStore.makeentp(ent)
+        const update_query = Knex(ent_table).update(entp).where('id', ent.id).toSQL()
 
-      var autoIncrement = q.auto_increment$ || false
+        return execQuery({ text: update_query.sql, values: update_query.bindings }, function (err, res) {
+          if (err) {
+            return done(err)
+          }
 
-      return getSchema(ent, function (err, schema) {
+          const updatedAnything = res.affectedRows > 0
+
+          if (!updatedAnything) {
+            const ins_query = Knex(ent_table).insert(entp).toSQL()
+
+            return execQuery({ text: ins_query.sql, values: ins_query.bindings }, function (err) {
+              if (err) {
+                return done(err)
+              }
+
+
+              const sel_query = Knex.select('*').from(ent_table).where('id', ent.id).toSQL()
+
+              return execQuery({ text: sel_query.sql, values: sel_query.bindings }, function (err, rows) {
+                if (err) {
+                  return done(err)
+                }
+
+                if (0 === rows.length) {
+                  return done()
+                }
+
+                return done(null, RelationalStore.makeent(ent, rows[0]))
+              })
+            })
+          }
+
+          const sel_query = Knex.select('*').from(ent_table).where('id', ent.id).toSQL()
+
+          return execQuery({ text: sel_query.sql, values: sel_query.bindings }, function (err, rows) {
+            if (err) {
+              return done(err)
+            }
+
+            if (0 === rows.length) {
+              return done()
+            }
+
+            return done(null, RelationalStore.makeent(ent, rows[0]))
+          })
+        })
+      }
+
+
+      return generateId(seneca, store.name, function (err, generatedId) {
         if (err) {
-          seneca.log.error('save', 'Error while pulling the schema:', err)
           return done(err)
         }
 
 
-        if (isUpdate(ent)) {
-          return updateEnt(ent, schema, opts, function (err, res) {
+        const new_id = null == ent.id$
+          ? generatedId
+          : ent.id$
+
+
+        const new_ent = ent.clone$()
+        new_ent.id = new_id
+
+        const new_entp = RelationalStore.makeentp(new_ent)
+
+
+        /*
+        const upsertFields = isUpsert(ent, q)
+
+        if (null != upsertFields) {
+          return upsertEnt(upsertFields, newEnt, function (err, res) {
             if (err) {
-              seneca.log.error('save/update', 'Error while updating the entity:', err)
+              seneca.log.error('save/upsert', 'Error while inserting the entity:', err)
               return done(err)
             }
 
-            var updatedAnything = res.affectedRows > 0
+            seneca.log.debug('save/upsert', res)
 
-            if (!updatedAnything) {
-              return insertEnt(ent, function (err, res) {
-                if (err) {
-                  seneca.log.error('save/insert', 'Error while inserting the entity:', err)
-                  return done(err)
-                }
-
-                seneca.log.debug('save/insert', res)
-
-                return done(null, res)
-              })
-            }
-
-            return findEnt(ent, { id: ent.id }, function (err, res) {
-              if (err) {
-                seneca.log.error('save/update', 'Error while fetching the updated entity:', err)
-                return done(err)
-              }
-
-              seneca.log.debug('save/update', res)
-
-              return done(null, res)
-            })
+            return done(null, res)
           })
         }
+        */
 
 
-        return generateId(seneca, store.name, function (err, generatedId) {
+        const ins_query = Knex(ent_table).insert(new_entp).toSQL()
+
+        return execQuery({ text: ins_query.sql, values: ins_query.bindings }, function (err) {
           if (err) {
-            seneca.log.error('save/insert', 'Error while generating an id for the entity:', err)
             return done(err)
           }
 
 
-          var newId = null == ent.id$
-            ? generatedId
-            : ent.id$
+          const sel_query = Knex.select('*').from(ent_table).where('id', new_ent.id).toSQL()
 
-
-          var newEnt = ent.clone$()
-
-          if (!autoIncrement) {
-            newEnt.id = newId
-          }
-
-
-          const upsertFields = isUpsert(ent, q)
-
-          if (null != upsertFields) {
-            return upsertEnt(upsertFields, newEnt, function (err, res) {
-              if (err) {
-                seneca.log.error('save/upsert', 'Error while inserting the entity:', err)
-                return done(err)
-              }
-
-              seneca.log.debug('save/upsert', res)
-
-              return done(null, res)
-            })
-          }
-
-
-          return insertEnt(newEnt, function (err, res) {
+          return execQuery({ text: sel_query.sql, values: sel_query.bindings }, function (err, rows) {
             if (err) {
-              seneca.log.error('save/insert', 'Error while inserting the entity:', err)
               return done(err)
             }
 
-            seneca.log.debug('save/insert', res)
+            if (0 === rows.length) {
+              return done()
+            }
 
-            return done(null, res)
+            return done(null, RelationalStore.makeent(new_ent, rows[0]))
           })
         })
       })

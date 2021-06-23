@@ -55,10 +55,12 @@ describe('MySQL suite tests ', function () {
     script: lab
   })
 
+  /*
   Shared.upserttest({
     seneca: si,
     script: lab
   })
+  */
 
   Extra.extendTest({
     seneca: si,
