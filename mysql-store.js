@@ -604,37 +604,11 @@ function mysql_store (options) {
 
     load: function (args, done) {
       const seneca = this
+      const { qent, q } = args
 
+      const query = Helpers.select(qent, q, seneca, done).toSQL()
 
-      const { qent } = args
-      const ent_table = RelationalStore.tablename(qent)
-
-
-      const q = _.clone(args.q)
-
-      stripInvalidLimitInPlace(q)
-      stripInvalidSkipInPlace(q)
-
-
-      const where = seneca.util.clean(q)
-
-
-      let knex_query
-
-      knex_query = Knex.select('*').from(ent_table).where(where).toSQL()
-
-      if (null != q.limit$) {
-        knex_query = knex_query.limit(q.limit$)
-      }
-
-      if (null != q.skip$) {
-        knex_query = knex_query.limit(q.skip$)
-      }
-
-
-      const query = { text: knex_query.sql, values: knex_query.bindings }
-
-      return execQuery(query, function (err, rows) {
+      return execQuery({ text: query.sql, values: query.bindings }, function (err, rows) {
         if (err) {
           return done(err)
         }
@@ -650,20 +624,20 @@ function mysql_store (options) {
 
 
     list: function (args, done) {
-      var seneca = this
+      const seneca = this
+      const { qent, q } = args
 
-      var qent = args.qent
-      var q = args.q
+      const query = Helpers.select(qent, q, seneca)
+        .toSQL()
 
-      return listEnts(qent, q, function (err, res) {
+      return execQuery({ text: query.sql, values: query.bindings }, function (err, rows) {
         if (err) {
-          seneca.log.error('list', 'Error while listing the entities:', err)
           return done(err)
         }
 
-        seneca.log.debug('list', q, res.length)
+        const out = rows.map(row => RelationalStore.makeent(qent, row))
 
-        return done(null, res)
+        return done(null, out)
       })
     },
 
@@ -774,6 +748,50 @@ function mysql_store (options) {
   })
 
   return {name: store.name, tag: meta.tag}
+}
+
+class Helpers {
+  static select(qent, q, seneca) {
+    const ent_table = RelationalStore.tablename(qent)
+
+
+    let knex_query
+
+    knex_query = Knex.select('*').from(ent_table)
+
+
+    if ('string' === typeof q) {
+      knex_query = knex_query.where({ id: q })
+    } else if (Array.isArray(q)) {
+      knex_query = knex_query.whereIn('id', q)
+    } else {
+      const where = seneca.util.clean(q)
+      knex_query = knex_query.where(where)
+    }
+
+
+    if ('number' === typeof q.limit$ && 0 <= q.limit$) {
+      knex_query = knex_query.limit(q.limit$)
+    }
+
+
+    if ('number' === typeof q.skip$ && 0 <= q.skip$) {
+      knex_query = knex_query.offset(q.skip$)
+    }
+
+
+    if (null != q.sort$) {
+      const order_by = Object.keys(q.sort$)
+        .map(column => {
+          const order = q.sort$[column] < 0 ? 'desc' : 'asc'
+          return { column, order }
+        })
+
+      knex_query = knex_query.orderBy(order_by)
+    }
+
+    return knex_query
+  }
 }
 
 module.exports = mysql_store
