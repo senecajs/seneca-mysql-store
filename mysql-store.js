@@ -381,22 +381,79 @@ function mysql_store (options) {
         const new_entp = RelationalStore.makeentp(new_ent)
 
 
-        /*
-        const upsertFields = isUpsert(ent, q)
+        const upsert_fields = isUpsert(ent, q)
 
-        if (null != upsertFields) {
-          return upsertEnt(upsertFields, newEnt, function (err, res) {
-            if (err) {
-              seneca.log.error('save/upsert', 'Error while inserting the entity:', err)
-              return done(err)
+        if (null != upsert_fields) {
+          return transaction(async function (conn, end_of_transaction) {
+            try {
+              const update_q = upsert_fields
+                .filter(c => undefined !== new_entp[c])
+                .reduce((h, c) => {
+                  h[c] = new_entp[c]
+                  return h
+                }, {})
+
+
+              if (_.isEmpty(update_q)) {
+                const ins_sql = Knex(ent_table).insert(new_entp).toSQL()
+
+                await execQueryAsync(ins_sql, conn)
+
+                // NOTE: Because MySQL does not support "RETURNING", we must fetch
+                // the entity in a separate trip to the db. We can fetch the entity
+                // by the query and not worry about duplicates - this is because
+                // the query is unique by definition, because upserts can only work
+                // for unique keys.
+                //
+                const sel_sql = Knex.select('*').from(ent_table).where('id', new_ent.id).toSQL()
+                const rows = await execQueryAsync(sel_sql, conn)
+
+                if (0 === rows.length) {
+                  return end_of_transaction()
+                }
+
+                return end_of_transaction(null, RelationalStore.makeent(new_ent, rows[0]))
+              }
+
+              // NOTE: This code cannot be replaced with updateEnt. updateEnt updates
+              // records by the id. The id in this `ent` is the new id.
+              //
+              // TODO: Re-consider the logic.
+              //
+              const update_set = _.clone(new_entp); delete update_set.id
+              const update_query = QueryBuilder.updatewherestm(update_q, new_ent, update_set)
+
+              await execQueryAsync({
+                sql: update_query.text,
+                bindings: update_query.values
+              }, conn)
+
+              const ins_select_query = QueryBuilder.insertwherenotexistsstm(new_ent, update_q)
+
+              await execQueryAsync({
+                sql: ins_select_query.text,
+                bindings: ins_select_query.values
+              }, conn)
+
+              // NOTE: Because MySQL does not support "RETURNING", we must fetch
+              // the entity in a separate trip to the db. We can fetch the entity
+              // by the query and not worry about duplicates - this is because
+              // the query is unique by definition, because upserts can only work
+              // for unique keys.
+              //
+              const sel_sql = Knex.select('*').from(ent_table).where(update_q).toSQL()
+              const rows = await execQueryAsync(sel_sql, conn)
+
+              if (0 === rows.length) {
+                return end_of_transaction()
+              }
+
+              return end_of_transaction(null, RelationalStore.makeent(new_ent, rows[0]))
+            } catch (err) {
+              return end_of_transaction(err)
             }
-
-            seneca.log.debug('save/upsert', res)
-
-            return done(null, res)
-          })
+          }, done)
         }
-        */
 
 
         const ins_sql = Knex(ent_table).insert(new_entp).toSQL()
@@ -419,13 +476,13 @@ function mysql_store (options) {
           return null
         }
 
-        const upsertFields = q.upsert$.filter((p) => !p.includes('$'))
+        const upsert_fields = q.upsert$.filter((p) => !p.includes('$'))
 
-        if (0 === upsertFields.length) {
+        if (0 === upsert_fields.length) {
           return null
         }
 
-        return upsertFields
+        return upsert_fields
       }
 
 

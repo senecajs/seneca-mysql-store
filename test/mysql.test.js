@@ -22,10 +22,6 @@ const DbConfig = require('./support/db/config')
 describe('MySQL suite tests ', function () {
   const si = makeSeneca({ mysqlStoreOpts: DbConfig })
 
-  const siMerge = makeSeneca({
-    mysqlStoreOpts: Object.assign({}, DbConfig, { merge: false })
-  })
-
   before({}, function (done) {
     si.ready(done)
   })
@@ -36,7 +32,6 @@ describe('MySQL suite tests ', function () {
 
   Shared.basictest({
     seneca: si,
-    senecaMerge: siMerge,
     script: lab
   })
 
@@ -55,12 +50,10 @@ describe('MySQL suite tests ', function () {
     script: lab
   })
 
-  /*
   Shared.upserttest({
     seneca: si,
     script: lab
   })
-  */
 
   Extra.extendTest({
     seneca: si,
