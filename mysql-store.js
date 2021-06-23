@@ -514,21 +514,26 @@ function mysql_store (options) {
     },
 
 
-    list: function (args, done) {
-      return new Promise(async (resolve, reject) => {
-        const seneca = this
-        const { qent, q } = args
+    list(args, done) {
+      const seneca = this
+      const sel_query = buildListQuery(args, { seneca })
 
-        const sel_sql = buildListQuery(qent, q)
-        const rows = await execQueryAsync(sel_sql)
+      return execQuery(sel_query, (err, rows) => {
+        if (err) {
+          return done(err)
+        }
+
+        const { qent } = args
         const out = rows.map(row => RelationalStore.makeent(qent, row))
 
-        return resolve(out)
+        return done(null, out)
       })
-        .then(done).catch(done)
 
 
-      function buildListQuery(qent, q) {
+      function buildListQuery(args, ctx) {
+        const { qent, q } = args
+        const { seneca } = ctx
+
         if ('string' === typeof q.native$) {
           return q.native$
         }
@@ -540,7 +545,27 @@ function mysql_store (options) {
           return { sql, bindings }
         }
 
-        return Helpers.select(qent, q, seneca).toSQL()
+        
+        const ent_table = RelationalStore.tablename(qent)
+
+
+        let where
+
+        if ('string' === typeof q || Array.isArray(q)) {
+          where = { id: q }
+        } else {
+          where = seneca.util.clean(q)
+        }
+
+
+        return Q.selectstm({
+          columns: '*',
+          from: ent_table,
+          where,
+          limit: 0 <= q.limit$ ? q.limit$ : null,
+          offset: 0 <= q.skip$ ? q.skip$ : null,
+          order_by: q.sort$ || null
+        })
       }
     },
 
