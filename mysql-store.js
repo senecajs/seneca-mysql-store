@@ -494,23 +494,45 @@ function mysql_store (options) {
       }
     },
 
-    load: function (args, done) {
-      return new Promise(async (resolve, reject) => {
-        const seneca = this
-        const { qent, q } = args
+    load(args, done) {
+      const seneca = this
+      const { qent, q } = args
+      const ent_table = RelationalStore.tablename(qent)
 
-        const sel_sql = Helpers.select(qent, q, seneca, done).toSQL()
-        const rows = await execQueryAsync(sel_sql)
 
-        if (0 === rows.length) {
-          return resolve(null)
+      let where
+
+      if ('string' === typeof q || Array.isArray(q)) {
+        where = { id: q }
+      } else {
+        where = seneca.util.clean(q)
+      }
+
+
+      const sel_query = Q.selectstm({
+        columns: '*',
+        from: ent_table,
+        where,
+        limit: 1,
+        offset: 0 <= q.skip$ ? q.skip$ : null,
+        order_by: q.sort$ || null
+      })
+
+
+      return execQuery(sel_query, (err, rows) => {
+        if (err) {
+          return done(err)
         }
 
-        const out = RelationalStore.makeent(qent, rows[0])
+        if (0 === rows.length) {
+          return done(null, null)
+        }
 
-        return resolve(out)
+        const row = rows[0]
+        const out = RelationalStore.makeent(qent, row)
+
+        return done(null, out)
       })
-        .then(done).catch(done)
     },
 
 
