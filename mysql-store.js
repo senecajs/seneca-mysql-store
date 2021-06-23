@@ -14,15 +14,15 @@ var Eraro = require('eraro')({
   package: 'mysql'
 })
 
-var storeName = 'mysql-store'
-var actionRole = 'sql'
+var STORE_NAME = 'mysql-store'
+var ACTION_ROLE = 'sql'
 
 function mysql_store (options) {
   var seneca = this
 
   var opts = seneca.util.deepextend(DefaultConfig, options)
   var internals = {
-    name: storeName,
+    name: STORE_NAME,
     opts: opts,
     waitmillis: opts.minwait
   }
@@ -146,6 +146,25 @@ function mysql_store (options) {
     })
   }
 
+  async function execQueryAsync (query, db = null) {
+    return new Promise((resolve, reject) => {
+      const conn = null == db
+        ? internals.connectionPool
+        : db
+
+      if ('string' === typeof query) {
+        return conn.query(query, done)
+      }
+
+      return conn.query(query.sql, query.bindings, done)
+
+
+      function done(err, out) {
+        return err ? reject(err) : resolve(out)
+      }
+    })
+  }
+
   function execQuery (...args) {
     const [query, db, done] = (function () {
       if (2 === args.length) {
@@ -256,15 +275,23 @@ function mysql_store (options) {
     }, done)
   }
 
-  function generateId (seneca, target, done) {
-    return seneca.act({ role: actionRole, hook: 'generate_id', target: target }, function (err, res) {
-      if (err) {
-        return done(err)
+  function generateId (seneca) {
+    return new Promise((resolve, reject) => {
+      const msg = {
+        role: ACTION_ROLE,
+        hook: 'generate_id',
+        target: STORE_NAME
       }
 
-      var newId = res.id
+      return seneca.act(msg, function (err, res) {
+        if (err) {
+          return reject(err)
+        }
 
-      return done(null, newId)
+        const { id: new_id } = res
+
+        return resolve(new_id)
+      })
     })
   }
 
@@ -282,7 +309,7 @@ function mysql_store (options) {
 
   // The store interface returned to seneca
   var store = {
-    name: storeName,
+    name: STORE_NAME,
 
     // Close the connection
     close: function (cmd, cb) {
@@ -303,71 +330,48 @@ function mysql_store (options) {
 
 
     save: function (args, done) {
-      const seneca = this
-      const { ent, q } = args
-      const ent_table = RelationalStore.tablename(ent)
+      return new Promise(async (resolve, reject) => {
+        const seneca = this
+        const { ent, q } = args
+        const ent_table = RelationalStore.tablename(ent)
 
-      if (isUpdate(ent)) {
-        const entp = RelationalStore.makeentp(ent)
-        const update_sql = Knex(ent_table).update(entp).where('id', ent.id).toSQL()
+        if (isUpdate(ent)) {
+          const entp = RelationalStore.makeentp(ent)
+          const update_sql = Knex(ent_table).update(entp).where('id', ent.id).toSQL()
 
-        return execQuery(update_sql, function (err, res) {
-          if (err) {
-            return done(err)
-          }
+          const update = await execQueryAsync(update_sql)
+          const updated_anything = update.affectedRows > 0
 
-          const updatedAnything = res.affectedRows > 0
-
-          if (!updatedAnything) {
+          if (!updated_anything) {
             const ins_sql = Knex(ent_table).insert(entp).toSQL()
 
-            return execQuery(ins_sql, function (err) {
-              if (err) {
-                return done(err)
-              }
+            await execQueryAsync(ins_sql)
 
+            const sel_sql = Knex.select('*').from(ent_table).where('id', ent.id).toSQL()
+            const rows = await execQueryAsync(sel_sql)
 
-              const sel_sql = Knex.select('*').from(ent_table).where('id', ent.id).toSQL()
+            if (0 === rows.length) {
+              return resolve()
+            }
 
-              return execQuery(sel_sql, function (err, rows) {
-                if (err) {
-                  return done(err)
-                }
-
-                if (0 === rows.length) {
-                  return done()
-                }
-
-                return done(null, RelationalStore.makeent(ent, rows[0]))
-              })
-            })
+            return resolve(RelationalStore.makeent(ent, rows[0]))
           }
 
           const sel_sql = Knex.select('*').from(ent_table).where('id', ent.id).toSQL()
+          const rows = await execQueryAsync(sel_sql)
 
-          return execQuery(sel_sql, function (err, rows) {
-            if (err) {
-              return done(err)
-            }
+          if (0 === rows.length) {
+            return resolve()
+          }
 
-            if (0 === rows.length) {
-              return done()
-            }
-
-            return done(null, RelationalStore.makeent(ent, rows[0]))
-          })
-        })
-      }
-
-
-      return generateId(seneca, store.name, function (err, generatedId) {
-        if (err) {
-          return done(err)
+          return resolve(RelationalStore.makeent(ent, rows[0]))
         }
 
 
+        const generated_id = await generateId(seneca)
+
         const new_id = null == ent.id$
-          ? generatedId
+          ? generated_id
           : ent.id$
 
 
@@ -397,27 +401,18 @@ function mysql_store (options) {
 
         const ins_sql = Knex(ent_table).insert(new_entp).toSQL()
 
-        return execQuery(ins_sql, function (err) {
-          if (err) {
-            return done(err)
-          }
+        await execQueryAsync(ins_sql)
 
+        const sel_sql = Knex.select('*').from(ent_table).where('id', new_ent.id).toSQL()
+        const rows = await execQueryAsync(sel_sql)
 
-          const sel_sql = Knex.select('*').from(ent_table).where('id', new_ent.id).toSQL()
+        if (0 === rows.length) {
+          return resolve()
+        }
 
-          return execQuery(sel_sql, function (err, rows) {
-            if (err) {
-              return done(err)
-            }
-
-            if (0 === rows.length) {
-              return done()
-            }
-
-            return done(null, RelationalStore.makeent(new_ent, rows[0]))
-          })
-        })
+        return resolve(RelationalStore.makeent(new_ent, rows[0]))
       })
+        .then(done).catch(done)
 
       function isUpsert (ent, q) {
         if (!Array.isArray(q.upsert$)) {
@@ -464,10 +459,12 @@ function mysql_store (options) {
       const seneca = this
       const { qent, q } = args
 
+
       const sel_sql = (() => {
         if ('string' === typeof q.native$) {
           return q.native$
         }
+
 
         if (Array.isArray(q.native$)) {
           Assert(0 < q.native$.length, 'q.native$.length')
@@ -476,8 +473,10 @@ function mysql_store (options) {
           return { sql, bindings }
         }
 
+
         return Helpers.select(qent, q, seneca).toSQL()
       })()
+
 
       return execQuery(sel_sql, function (err, rows) {
         if (err) {
@@ -584,7 +583,7 @@ function mysql_store (options) {
     })
   })
 
-  seneca.add({role: actionRole, hook: 'load'}, function (args, done) {
+  seneca.add({role: ACTION_ROLE, hook: 'load'}, function (args, done) {
     var q = _.clone(args.q)
     var qent = args.qent
     q.limit$ = 1
@@ -594,7 +593,7 @@ function mysql_store (options) {
     })
   })
 
-  seneca.add({role: actionRole, hook: 'generate_id', target: store.name}, function (args, done) {
+  seneca.add({role: ACTION_ROLE, hook: 'generate_id', target: store.name}, function (args, done) {
     return done(null, {id: Uuid()})
   })
 
@@ -606,28 +605,28 @@ class Helpers {
     const ent_table = RelationalStore.tablename(qent)
 
 
-    let knex_query
+    let query
 
-    knex_query = Knex.select('*').from(ent_table)
+    query = Knex.select('*').from(ent_table)
 
 
     if ('string' === typeof q) {
-      knex_query = knex_query.where({ id: q })
+      query = query.where({ id: q })
     } else if (Array.isArray(q)) {
-      knex_query = knex_query.whereIn('id', q)
+      query = query.whereIn('id', q)
     } else {
       const where = seneca.util.clean(q)
-      knex_query = knex_query.where(where)
+      query = query.where(where)
     }
 
 
     if ('number' === typeof q.limit$ && 0 <= q.limit$) {
-      knex_query = knex_query.limit(q.limit$)
+      query = query.limit(q.limit$)
     }
 
 
     if ('number' === typeof q.skip$ && 0 <= q.skip$) {
-      knex_query = knex_query.offset(q.skip$)
+      query = query.offset(q.skip$)
     }
 
 
@@ -638,10 +637,10 @@ class Helpers {
           return { column, order }
         })
 
-      knex_query = knex_query.orderBy(order_by)
+      query = query.orderBy(order_by)
     }
 
-    return knex_query
+    return query
   }
 }
 
