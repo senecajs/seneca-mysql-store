@@ -164,7 +164,7 @@ function mysql_store (options) {
       db.query(query, done)
     }
     else {
-      db.query(query.text, query.values, done)
+      db.query(query.sql, query.bindings, done)
     }
   }
 
@@ -205,112 +205,6 @@ function mysql_store (options) {
         })
       })
     })
-  }
-
-  function findEnt (...args) {
-    if (3 === args.length) {
-      const [ent, q, done] = args
-
-      try {
-        var query = buildLoadStm(ent, q)
-
-        return execQuery(query, function (err, rows) {
-          if (err) {
-            return done(err)
-          }
-
-          if (rows.length > 0) {
-            return done(null, makeEntOfRow(rows[0], ent))
-          }
-
-          return done(null, null)
-        })
-      }
-      catch (err) {
-        return done(err)
-      }
-    }
-    else if (4 === args.length) {
-      const [ent, q, conn, done] = args
-
-      try {
-        var query = buildLoadStm(ent, q)
-
-        return execQuery(query, conn, function (err, rows) {
-          if (err) {
-            return done(err)
-          }
-
-          if (rows.length > 0) {
-            return done(null, makeEntOfRow(rows[0], ent))
-          }
-
-          return done(null, null)
-        })
-      }
-      catch (err) {
-        return done(err)
-      }
-    }
-    else {
-      Assert.fail(`Unexpected num of args: ${args.length}`)
-    }
-  }
-
-  function listEnts (ent, q, done) {
-    try {
-      var query = buildListStm(ent, q)
-
-      return execQuery(query, function (err, rows) {
-        if (err) {
-          return done(err)
-        }
-
-        var list = rows.map(function (row) {
-          return makeEntOfRow(row, ent)
-        })
-
-        return done(null, list)
-      })
-    }
-    catch (err) {
-      return done(err)
-    }
-  }
-
-  function insertEnt (...args) {
-    if (2 === args.length) {
-      const ent = args[0]
-      const done = args[args.length - 1]
-
-      const query = QueryBuilder.savestm(ent)
-
-      return execQuery(query, function (err, res) {
-        if (err) {
-          return done(err)
-        }
-
-        return findEnt(ent, { id: ent.id }, done)
-      })
-    }
-    else if (3 === args.length) {
-      const ent = args[0]
-      const conn = args[1]
-      const done = args[args.length - 1]
-
-      const query = QueryBuilder.savestm(ent)
-
-      return execQuery(query, conn, function (err, res) {
-        if (err) {
-          return done(err)
-        }
-
-        return findEnt(ent, { id: ent.id }, conn, done)
-      })
-    }
-    else {
-      Assert.fail(`Unexpected num of args: ${args.length}`)
-    }
   }
 
   function upsertEnt (upsert_fields, ent, done) {
@@ -362,18 +256,6 @@ function mysql_store (options) {
     }, done)
   }
 
-  function updateEnt (ent, schema, opts, done) {
-    try {
-      var merge = shouldMerge(ent, opts)
-      var query = QueryBuilder.updatestm(ent, schema, { merge })
-
-      return execQuery(query, done)
-    }
-    catch (err) {
-      return done(err)
-    }
-  }
-
   function generateId (seneca, target, done) {
     return seneca.act({ role: actionRole, hook: 'generate_id', target: target }, function (err, res) {
       if (err) {
@@ -396,69 +278,6 @@ function mysql_store (options) {
     }
 
     return true
-  }
-
-  function getSchema (ent, done) {
-    const query = QueryBuilder.schemastm(ent)
-
-    return execQuery(query, function (err, schema) {
-      if (err) {
-        return done(err)
-      }
-
-      return done(null, schema)
-    })
-  }
-
-  function buildLoadStm (ent, q) {
-    var loadQ = _.clone(q)
-    loadQ.limit$ = 1
-
-    return QueryBuilder.selectstm(ent, loadQ)
-  }
-
-  function buildListStm (ent, q) {
-    // TODO: Tidy up.
-    //
-    if (Array.isArray(q)) {
-      return QueryBuilder.selectwhereidinstm(ent, q)
-    }
-
-    if (null != q.native$) {
-      return QueryBuilder.nativestm(q)
-    }
-
-    var cq = _.clone(q)
-    stripInvalidLimitInPlace(cq)
-    stripInvalidSkipInPlace(cq)
-
-    return QueryBuilder.selectstm(ent, cq)
-  }
-
-  function stripInvalidLimitInPlace (q) {
-    if (Array.isArray(q)) {
-      return
-    }
-
-    if (!(typeof q.limit$ === 'number' && q.limit$ >= 0)) {
-      delete q.limit$
-    }
-  }
-
-  function stripInvalidSkipInPlace (q) {
-    if (Array.isArray(q)) {
-      return
-    }
-
-    if (!(typeof q.skip$ === 'number' && q.skip$ >= 0)) {
-      delete q.skip$
-    }
-  }
-
-  // TODO: Remove this adapter.
-  //
-  function makeEntOfRow (row, ent) {
-    return RelationalStore.makeent(ent, row)
   }
 
   // The store interface returned to seneca
@@ -490,9 +309,9 @@ function mysql_store (options) {
 
       if (isUpdate(ent)) {
         const entp = RelationalStore.makeentp(ent)
-        const update_query = Knex(ent_table).update(entp).where('id', ent.id).toSQL()
+        const update_sql = Knex(ent_table).update(entp).where('id', ent.id).toSQL()
 
-        return execQuery({ text: update_query.sql, values: update_query.bindings }, function (err, res) {
+        return execQuery(update_sql, function (err, res) {
           if (err) {
             return done(err)
           }
@@ -500,17 +319,17 @@ function mysql_store (options) {
           const updatedAnything = res.affectedRows > 0
 
           if (!updatedAnything) {
-            const ins_query = Knex(ent_table).insert(entp).toSQL()
+            const ins_sql = Knex(ent_table).insert(entp).toSQL()
 
-            return execQuery({ text: ins_query.sql, values: ins_query.bindings }, function (err) {
+            return execQuery(ins_sql, function (err) {
               if (err) {
                 return done(err)
               }
 
 
-              const sel_query = Knex.select('*').from(ent_table).where('id', ent.id).toSQL()
+              const sel_sql = Knex.select('*').from(ent_table).where('id', ent.id).toSQL()
 
-              return execQuery({ text: sel_query.sql, values: sel_query.bindings }, function (err, rows) {
+              return execQuery(sel_sql, function (err, rows) {
                 if (err) {
                   return done(err)
                 }
@@ -524,9 +343,9 @@ function mysql_store (options) {
             })
           }
 
-          const sel_query = Knex.select('*').from(ent_table).where('id', ent.id).toSQL()
+          const sel_sql = Knex.select('*').from(ent_table).where('id', ent.id).toSQL()
 
-          return execQuery({ text: sel_query.sql, values: sel_query.bindings }, function (err, rows) {
+          return execQuery(sel_sql, function (err, rows) {
             if (err) {
               return done(err)
             }
@@ -576,17 +395,17 @@ function mysql_store (options) {
         */
 
 
-        const ins_query = Knex(ent_table).insert(new_entp).toSQL()
+        const ins_sql = Knex(ent_table).insert(new_entp).toSQL()
 
-        return execQuery({ text: ins_query.sql, values: ins_query.bindings }, function (err) {
+        return execQuery(ins_sql, function (err) {
           if (err) {
             return done(err)
           }
 
 
-          const sel_query = Knex.select('*').from(ent_table).where('id', new_ent.id).toSQL()
+          const sel_sql = Knex.select('*').from(ent_table).where('id', new_ent.id).toSQL()
 
-          return execQuery({ text: sel_query.sql, values: sel_query.bindings }, function (err, rows) {
+          return execQuery(sel_sql, function (err, rows) {
             if (err) {
               return done(err)
             }
@@ -624,9 +443,9 @@ function mysql_store (options) {
       const seneca = this
       const { qent, q } = args
 
-      const query = Helpers.select(qent, q, seneca, done).toSQL()
+      const sel_sql = Helpers.select(qent, q, seneca, done).toSQL()
 
-      return execQuery({ text: query.sql, values: query.bindings }, function (err, rows) {
+      return execQuery(sel_sql, function (err, rows) {
         if (err) {
           return done(err)
         }
@@ -645,9 +464,22 @@ function mysql_store (options) {
       const seneca = this
       const { qent, q } = args
 
-      const query = Helpers.select(qent, q, seneca).toSQL()
+      const sel_sql = (() => {
+        if ('string' === typeof q.native$) {
+          return q.native$
+        }
 
-      return execQuery({ text: query.sql, values: query.bindings }, function (err, rows) {
+        if (Array.isArray(q.native$)) {
+          Assert(0 < q.native$.length, 'q.native$.length')
+          const [sql, ...bindings] = q.native$
+
+          return { sql, bindings }
+        }
+
+        return Helpers.select(qent, q, seneca).toSQL()
+      })()
+
+      return execQuery(sel_sql, function (err, rows) {
         if (err) {
           return done(err)
         }
@@ -668,18 +500,18 @@ function mysql_store (options) {
 
 
       if (q.all$) {
-        const sel_query = Helpers.select(qent, q, seneca).toSQL()
+        const sel_sql = Helpers.select(qent, q, seneca).toSQL()
 
-        return execQuery({ text: sel_query.sql, values: sel_query.bindings }, function (err, rows) {
+        return execQuery(sel_sql, function (err, rows) {
           if (err) {
             return done(err)
           }
 
           const ent_table = RelationalStore.tablename(qent)
           const ids = rows.map(x => x.id)
-          const del_query = Knex.from(ent_table).whereIn('id', ids).del().toSQL()
+          const del_sql = Knex.from(ent_table).whereIn('id', ids).del().toSQL()
 
-          return execQuery({ text: del_query.sql, values: del_query.bindings }, function (err, _) {
+          return execQuery(del_sql, function (err, _) {
             if (err) {
               return done(err)
             }
@@ -690,11 +522,11 @@ function mysql_store (options) {
       }
 
 
-      const sel_query = Helpers.select(qent, q, seneca)
+      const sel_sql = Helpers.select(qent, q, seneca)
         .limit(1)
         .toSQL()
 
-      return execQuery({ text: sel_query.sql, values: sel_query.bindings }, function (err, rows) {
+      return execQuery(sel_sql, function (err, rows) {
         if (err) {
           return done(err)
         }
@@ -708,9 +540,9 @@ function mysql_store (options) {
         const ent_table = RelationalStore.tablename(qent)
 
 
-        const del_query = Knex.from(ent_table).where('id', row.id).del().toSQL()
+        const del_sql = Knex.from(ent_table).where('id', row.id).del().toSQL()
 
-        return execQuery({ text: del_query.sql, values: del_query.bindings }, function (err) {
+        return execQuery(del_sql, function (err) {
           if (err) {
             return done(err)
           }
