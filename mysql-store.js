@@ -8,6 +8,7 @@ var Uuid = require('node-uuid')
 var DefaultConfig = require('./default_config.json')
 var QueryBuilder = require('./query-builder')
 var RelationalStore = require('./lib/relational-util')
+const Knex = require('knex')({ client: 'mysql' })
 
 var Eraro = require('eraro')({
   package: 'mysql'
@@ -602,31 +603,48 @@ function mysql_store (options) {
     },
 
     load: function (args, done) {
-      // var seneca = this
-
-      var qent = args.qent
-      var q = args.q
-
-      //console.dir(q, { depth: 32 }) // dbg
+      const seneca = this
 
 
-      const cq = _.clone(q)
-
-      stripInvalidLimitInPlace(cq)
-      stripInvalidSkipInPlace(cq)
+      const { qent } = args
+      const ent_table = RelationalStore.tablename(qent)
 
 
-      return findEnt(qent, cq, function (err, res) {
+      const q = _.clone(args.q)
+
+      stripInvalidLimitInPlace(q)
+      stripInvalidSkipInPlace(q)
+
+
+      const where = seneca.util.clean(q)
+
+
+      let knex_query
+
+      knex_query = Knex.select('*').from(ent_table).where(where).toSQL()
+
+      if (null != q.limit$) {
+        knex_query = knex_query.limit(q.limit$)
+      }
+
+      if (null != q.skip$) {
+        knex_query = knex_query.limit(q.skip$)
+      }
+
+
+      const query = { text: knex_query.sql, values: knex_query.bindings }
+
+      return execQuery(query, function (err, rows) {
         if (err) {
-          // TODO: Investigate the crash.
-          // seneca.log.error('load', 'Error while fetching the entity:', err)
           return done(err)
         }
 
-        // TODO: Investigate the crash.
-        // seneca.log.debug('load', res)
+        if (0 < rows.length) {
+          const out = RelationalStore.makeent(qent, rows[0])
+          return done(null, out)
+        }
 
-        return done(null, res)
+        return done(null, null)
       })
     },
 

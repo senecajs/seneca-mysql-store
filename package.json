@@ -49,6 +49,7 @@
   "dependencies": {
     "async": "2.0.1",
     "eraro": "0.4.1",
+    "knex": "0.95.6",
     "mysql": "2.11.1",
     "node-uuid": "1.4.7"
   },
@@ -63,14 +64,14 @@
     "query-builder.js"
   ],
   "devDependencies": {
+    "@hapi/code": "8.0.3",
+    "@hapi/lab": "24.2.1",
     "chai": "3.5.0",
     "coveralls": "2.11.x",
     "docco": "0.7.x",
     "eslint-config-seneca": "3.x.x",
     "eslint-plugin-hapi": "4.x.x",
     "eslint-plugin-standard": "2.x.x",
-    "@hapi/code": "8.0.3",
-    "@hapi/lab": "24.2.1",
     "pre-commit": "1.1.3",
     "seneca": "3.23.3",
     "seneca-entity": "14.0.0",
