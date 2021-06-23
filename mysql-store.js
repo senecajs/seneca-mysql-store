@@ -627,8 +627,7 @@ function mysql_store (options) {
       const seneca = this
       const { qent, q } = args
 
-      const query = Helpers.select(qent, q, seneca)
-        .toSQL()
+      const query = Helpers.select(qent, q, seneca).toSQL()
 
       return execQuery({ text: query.sql, values: query.bindings }, function (err, rows) {
         if (err) {
@@ -646,58 +645,60 @@ function mysql_store (options) {
     // - Tidy up
     //
     remove: function (args, done) {
+      const seneca = this
       const { q, qent } = args
 
 
-      const cq = _.clone(q)
+      if (q.all$) {
+        const sel_query = Helpers.select(qent, q, seneca).toSQL()
 
-      stripInvalidLimitInPlace(cq)
-      stripInvalidSkipInPlace(cq)
-
-
-      if (cq.all$) {
-        return listEnts(qent, cq, function (err, delEnts) {
+        return execQuery({ text: sel_query.sql, values: sel_query.bindings }, function (err, rows) {
           if (err) {
             return done(err)
           }
 
-          return Async.parallel(
-            delEnts.map(ent => {
-              return done => {
-                const query = QueryBuilder.deleteentstm(ent)
-                return execQuery(query, done)
-              }
-            }),
+          const ent_table = RelationalStore.tablename(qent)
+          const ids = rows.map(x => x.id)
+          const del_query = Knex.from(ent_table).whereIn('id', ids).del().toSQL()
 
-            (err) => {
-              if (err) {
-                return done(err)
-              }
-
-              return done()
+          return execQuery({ text: del_query.sql, values: del_query.bindings }, function (err, _) {
+            if (err) {
+              return done(err)
             }
-          )
+
+            return done()
+          })
         })
       }
 
-      return findEnt(qent, cq, function (err, delEnt) {
+
+      const sel_query = Helpers.select(qent, q, seneca)
+        .limit(1)
+        .toSQL()
+
+      return execQuery({ text: sel_query.sql, values: sel_query.bindings }, function (err, rows) {
         if (err) {
           return done(err)
         }
 
-        if (!delEnt) {
-          return done()
+        if (0 === rows.length) {
+          return done(null, null)
         }
 
-        const query = QueryBuilder.deleteentstm(delEnt)
 
-        return execQuery(query, (err) => {
+        const row = rows[0]
+        const ent_table = RelationalStore.tablename(qent)
+
+
+        const del_query = Knex.from(ent_table).where('id', row.id).del().toSQL()
+
+        return execQuery({ text: del_query.sql, values: del_query.bindings }, function (err) {
           if (err) {
             return done(err)
           }
 
-          if (cq.load$) {
-            return done(null, delEnt)
+          if (q.load$) {
+            return done(null, RelationalStore.makeent(qent, row))
           }
 
           return done()
