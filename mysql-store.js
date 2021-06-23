@@ -9,6 +9,7 @@ var DefaultConfig = require('./default_config.json')
 var QueryBuilder = require('./query-builder')
 var RelationalStore = require('./lib/relational-util')
 const Knex = require('knex')({ client: 'mysql' })
+const Q = require('./lib/qbuilder')
 
 var Eraro = require('eraro')({
   package: 'mysql'
@@ -178,6 +179,8 @@ function mysql_store (options) {
 
       throw new Error(`execQuery did not expect ${args.length} args`)
     })()
+
+    //console.dir(query, { depth: 4 }) // dbg
 
     if (_.isString(query)) {
       db.query(query, done)
@@ -541,28 +544,35 @@ function mysql_store (options) {
       }
     },
 
-    // TODO:
-    // - Optimize - currently it's SUPER SLOW.
-    // - Tidy up
-    //
-    remove: function (args, done) {
+    remove(args, done) {
       const seneca = this
       const { q, qent } = args
 
+      const ent_table = RelationalStore.tablename(qent)
 
       if (q.all$) {
-        const sel_sql = Helpers.select(qent, q, seneca).toSQL()
+        const sel_query = Q.selectstm({
+          columns: ['id'],
+          from: ent_table,
+          where: seneca.util.clean(q),
+          limit: 0 <= q.limit$ ? q.limit$ : null,
+          offset: 0 <= q.skip$ ? q.skip$ : null,
+          order_by: q.sort$ || null
+        })
 
-        return execQuery(sel_sql, function (err, rows) {
+        return execQuery(sel_query, function (err, rows) {
           if (err) {
             return done(err)
           }
 
-          const ent_table = RelationalStore.tablename(qent)
-          const ids = rows.map(x => x.id)
-          const del_sql = Knex.from(ent_table).whereIn('id', ids).del().toSQL()
+          const del_query = Q.deletestm({
+            from: ent_table,
+            where: {
+              id: rows.map(x => x.id)
+            }
+          })
 
-          return execQuery(del_sql, function (err, _) {
+          return execQuery(del_query, function (err, _) {
             if (err) {
               return done(err)
             }
@@ -573,11 +583,17 @@ function mysql_store (options) {
       }
 
 
-      const sel_sql = Helpers.select(qent, q, seneca)
-        .limit(1)
-        .toSQL()
+      const sel_query = Q.selectstm({
+        columns: '*',
+        from: ent_table,
+        where: seneca.util.clean(q),
+        limit: 1,
+        offset: 0 <= q.skip$ ? q.skip$ : null,
+        order_by: q.sort$ || null
+      })
 
-      return execQuery(sel_sql, function (err, rows) {
+
+      return execQuery(sel_query, function (err, rows) {
         if (err) {
           return done(err)
         }
@@ -588,12 +604,15 @@ function mysql_store (options) {
 
 
         const row = rows[0]
-        const ent_table = RelationalStore.tablename(qent)
 
+        const del_query = Q.deletestm({
+          from: ent_table,
+          where: {
+            id: row.id
+          }
+        })
 
-        const del_sql = Knex.from(ent_table).where('id', row.id).del().toSQL()
-
-        return execQuery(del_sql, function (err) {
+        return execQuery(del_query, function (err) {
           if (err) {
             return done(err)
           }
