@@ -435,23 +435,22 @@ function mysql_store (options) {
     },
 
     load: function (args, done) {
-      const seneca = this
-      const { qent, q } = args
+      return new Promise(async (resolve, reject) => {
+        const seneca = this
+        const { qent, q } = args
 
-      const sel_sql = Helpers.select(qent, q, seneca, done).toSQL()
+        const sel_sql = Helpers.select(qent, q, seneca, done).toSQL()
+        const rows = await execQueryAsync(sel_sql)
 
-      return execQuery(sel_sql, function (err, rows) {
-        if (err) {
-          return done(err)
+        if (0 === rows.length) {
+          return resolve(null)
         }
 
-        if (0 < rows.length) {
-          const out = RelationalStore.makeent(qent, rows[0])
-          return done(null, out)
-        }
+        const out = RelationalStore.makeent(qent, rows[0])
 
-        return done(null, null)
+        return resolve(out)
       })
+        .then(done).catch(done)
     },
 
 
