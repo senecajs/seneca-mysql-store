@@ -455,15 +455,23 @@ function mysql_store (options) {
 
 
     list: function (args, done) {
-      const seneca = this
-      const { qent, q } = args
+      return new Promise(async (resolve, reject) => {
+        const seneca = this
+        const { qent, q } = args
+
+        const sel_sql = buildListQuery(qent, q)
+        const rows = await execQueryAsync(sel_sql)
+        const out = rows.map(row => RelationalStore.makeent(qent, row))
+
+        return resolve(out)
+      })
+        .then(done).catch(done)
 
 
-      const sel_sql = (() => {
+      function buildListQuery(qent, q) {
         if ('string' === typeof q.native$) {
           return q.native$
         }
-
 
         if (Array.isArray(q.native$)) {
           Assert(0 < q.native$.length, 'q.native$.length')
@@ -472,20 +480,8 @@ function mysql_store (options) {
           return { sql, bindings }
         }
 
-
         return Helpers.select(qent, q, seneca).toSQL()
-      })()
-
-
-      return execQuery(sel_sql, function (err, rows) {
-        if (err) {
-          return done(err)
-        }
-
-        const out = rows.map(row => RelationalStore.makeent(qent, row))
-
-        return done(null, out)
-      })
+      }
     },
 
     // TODO:
