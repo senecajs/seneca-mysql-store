@@ -170,6 +170,50 @@ describe('', function () {
       return { sql, bindings }
     }
 
+    static orderbystm(args) {
+      const { order_by } = args
+
+
+      let sql = ''
+      let bindings = []
+
+
+      let first_pair = true
+
+      for (const order_col in order_by) {
+        const order_val = order_by[order_col]
+
+
+        let order
+        
+        if ('string' === typeof order_val) {
+          if ('desc' === order_val.toLowerCase()) {
+            order = 'desc'
+          } else if ('asc' === order_val.toLowerCase()) {
+            order = 'asc'
+          } else {
+            throw new Error(`Unknown order: ${order_val}`)
+          }
+        } else if ('number' === typeof order_val) {
+          order = 0 <= order_val ? 'asc' : 'desc'
+        } else {
+          throw new Error('order must be a number or a string')
+        }
+
+        if (!first_pair) {
+          sql += ', '
+        }
+
+        sql += '?? ' + order
+        bindings.push(order_col)
+
+        first_pair = false
+      }
+
+
+      return { sql, bindings }
+    }
+
     static selectstm(args) {
       const {
         table,
@@ -211,40 +255,10 @@ describe('', function () {
 
 
       if (null != order_by) {
-        sql += ' order by '
+        const order_q = Q.orderbystm({ order_by })
 
-
-        let first_pair = true
-
-        for (const order_col in order_by) {
-          const order_val = order_by[order_col]
-
-
-          let order
-          
-          if ('string' === typeof order_val) {
-            if ('desc' === order_val.toLowerCase()) {
-              order = 'desc'
-            } else if ('asc' === order_val.toLowerCase()) {
-              order = 'asc'
-            } else {
-              throw new Error(`Unknown order: ${order_val}`)
-            }
-          } else if ('number' === typeof order_val) {
-            order = 0 <= order_val ? 'asc' : 'desc'
-          } else {
-            throw new Error('order must be a number or a string')
-          }
-
-          if (!first_pair) {
-            sql += ', '
-          }
-
-          sql += '?? ' + order
-          bindings.push(order_col)
-
-          first_pair = false
-        }
+        sql += ' order by ' + order_q.sql
+        bindings = bindings.concat(order_q.bindings)
       }
 
 
@@ -269,6 +283,7 @@ describe('', function () {
       const selectstm = Q.selectstm({
         table: 'users',
         columns: ['id', 'email'],
+        limit: 10,
         offset: 0,
         order_by: { email: 1, id: 'asc', age: 'desc', score: -1 }
       })
