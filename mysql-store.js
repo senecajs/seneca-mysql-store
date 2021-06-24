@@ -7,8 +7,10 @@ var MySQL = require('mysql')
 var Uuid = require('node-uuid')
 var DefaultConfig = require('./default_config.json')
 var QueryBuilder = require('./query-builder')
-var RelationalStore = require('./lib/relational-util')
+
+const RelationalStore = require('./lib/relational-util')
 const Q = require('./lib/qbuilder')
+const { intern } = require('./lib/intern')
 
 var Eraro = require('eraro')({
   package: 'mysql'
@@ -146,49 +148,6 @@ function mysql_store (options) {
     })
   }
 
-  async function execQueryAsync (query, db = null) {
-    return new Promise((resolve, reject) => {
-      const conn = null == db
-        ? internals.connectionPool
-        : db
-
-      if ('string' === typeof query) {
-        return conn.query(query, done)
-      }
-
-      return conn.query(query.sql, query.bindings, done)
-
-
-      function done(err, out) {
-        return err ? reject(err) : resolve(out)
-      }
-    })
-  }
-
-  function execQuery (...args) {
-    const [query, db, done] = (function () {
-      if (2 === args.length) {
-        const [query, done] = args
-        return [query, internals.connectionPool, done]
-      }
-
-      if (3 === args.length) {
-        return args
-      }
-
-      throw new Error(`execQuery did not expect ${args.length} args`)
-    })()
-
-    //console.dir(query, { depth: 4 }) // dbg
-
-    if (_.isString(query)) {
-      db.query(query, done)
-    }
-    else {
-      db.query(query.sql, query.bindings, done)
-    }
-  }
-
   function transaction (f, done) {
     return internals.connectionPool.getConnection(function (err, conn) {
       if (err) {
@@ -228,72 +187,23 @@ function mysql_store (options) {
     })
   }
 
-  function upsertEnt (upsert_fields, ent, done) {
-    return transaction(function (conn, end_of_transaction) {
-      const update_q = upsert_fields
-        .filter(p => null != ent[p])
-        .reduce((h, p) => {
-          h[p] = ent[p]
-          return h
-        }, {})
+  function generateid (ctx, done) {
+    const { seneca } = ctx
 
-      if (_.isEmpty(update_q)) {
-        return insertEnt(ent, conn, end_of_transaction)
+    const msg = {
+      role: ACTION_ROLE,
+      hook: 'generate_id',
+      target: STORE_NAME
+    }
+
+    return seneca.act(msg, function (err, res) {
+      if (err) {
+        return done(err)
       }
 
-      // NOTE: This code cannot be replaced with updateEnt. updateEnt updates
-      // records by the id. The id in this `ent` is the new id.
-      //
-      // TODO: Re-consider the logic.
-      //
-      const update_set = ent.data$(false); delete update_set.id
-      const update_query = QueryBuilder.updatewherestm(update_q, ent, update_set)
+      const { id: new_id } = res
 
-      return execQuery(update_query, conn, function (err) {
-        if (err) {
-          return end_of_transaction(err)
-        }
-
-        const ins_select_query = QueryBuilder.insertwherenotexistsstm(ent, update_q)
-
-        //console.dir(ins_select_query, { depth: 32 }) // dbg
-
-        return execQuery(ins_select_query, conn, function (err) {
-          if (err) {
-            return end_of_transaction(err)
-          }
-
-          //console.dir('insert-select ok', { depth: 32 }) // dbg
-
-          // NOTE: Because MySQL does not support "RETURNING", we must fetch
-          // the entity in a separate trip to the db. We can fetch the entity
-          // by the query and not worry about duplicates - this is because
-          // the query is unique by definition, because upserts can only work
-          // for unique keys.
-          //
-          return findEnt(ent, update_q, conn, end_of_transaction)
-        })
-      })
-    }, done)
-  }
-
-  function generateId (seneca) {
-    return new Promise((resolve, reject) => {
-      const msg = {
-        role: ACTION_ROLE,
-        hook: 'generate_id',
-        target: STORE_NAME
-      }
-
-      return seneca.act(msg, function (err, res) {
-        if (err) {
-          return reject(err)
-        }
-
-        const { id: new_id } = res
-
-        return resolve(new_id)
-      })
+      return done(null, new_id)
     })
   }
 
@@ -332,63 +242,78 @@ function mysql_store (options) {
 
 
     save(args, done) {
-      return new Promise(async (resolve, reject) => {
-        const seneca = this
-        const { ent, q } = args
-        const ent_table = RelationalStore.tablename(ent)
+      const seneca = this
+      const { ent, q } = args
+      const ent_table = RelationalStore.tablename(ent)
 
-        if (isUpdate(ent)) {
-          const entp = RelationalStore.makeentp(ent)
+      if (isUpdate(ent)) {
+        const entp = RelationalStore.makeentp(ent)
 
-          const update_query = Q.updatestm({
-            table: ent_table,
-            set: compact(entp),
-            where: { id: ent.id }
-          })
+        return intern.updaterows({
+          table: ent_table,
+          set: compact(entp),
+          where: { id: ent.id }
+        }, { db: internals.connectionPool }, (err, update) => {
+          if (err) {
+            return done(err)
+          }
 
-          const update = await execQueryAsync(update_query)
           const updated_anything = update.affectedRows > 0
 
           if (!updated_anything) {
-            const ins_query = Q.insertstm({
+            return intern.insertrow({
               into: ent_table,
               values: compact(entp)
+            }, { db: internals.connectionPool }, (err) => {
+              if (err) {
+                return done(err)
+              }
+
+              return intern.selectrows({
+                from: ent_table,
+                columns: '*',
+                where: { id: ent.id }
+              }, { db: internals.connectionPool }, (err, rows) => {
+                if (err) {
+                  return done(err)
+                }
+
+                if (0 === rows.length) {
+                  return done()
+                }
+
+                const row = rows[0]
+
+                return done(null, RelationalStore.makeent(ent, row))
+              })
             })
-
-            await execQueryAsync(ins_query)
-
-            const sel_query = Q.selectstm({
-              from: ent_table,
-              columns: '*',
-              where: { id: ent.id }
-            })
-
-            const rows = await execQueryAsync(sel_query)
-
-            if (0 === rows.length) {
-              return resolve()
-            }
-
-            return resolve(RelationalStore.makeent(ent, rows[0]))
           }
 
-          const sel_query = Q.selectstm({
+          return intern.selectrows({
             from: ent_table,
             columns: '*',
             where: { id: ent.id }
+          }, { db: internals.connectionPool }, (err, rows) => {
+            if (err) {
+              return done(err)
+            }
+
+            if (0 === rows.length) {
+              return done()
+            }
+
+            const row = rows[0]
+
+            return done(null, RelationalStore.makeent(ent, row))
           })
+        })
+      }
 
-          const rows = await execQueryAsync(sel_query)
 
-          if (0 === rows.length) {
-            return resolve()
-          }
-
-          return resolve(RelationalStore.makeent(ent, rows[0]))
+      return generateid({ seneca }, (err, generated_id) => {
+        if (err) {
+          return done(err)
         }
-
-
-        const generated_id = await generateId(seneca)
 
         const new_id = null == ent.id$
           ? generated_id
@@ -404,20 +329,23 @@ function mysql_store (options) {
         const upsert_fields = isUpsert(ent, q)
 
         if (null != upsert_fields) {
-          return transaction(async function (conn, end_of_transaction) {
-            try {
-              const update_q = upsert_fields
-                .filter(c => undefined !== new_entp[c])
-                .reduce((h, c) => {
-                  h[c] = new_entp[c]
-                  return h
-                }, {})
+          return transaction(async function (trx, end_of_transaction) {
+            const update_q = upsert_fields
+              .filter(c => undefined !== new_entp[c])
+              .reduce((h, c) => {
+                h[c] = new_entp[c]
+                return h
+              }, {})
 
 
-              if (_.isEmpty(update_q)) {
-                const ins_query = Q.insertstm({ into: ent_table, values: compact(new_entp) })
-
-                await execQueryAsync(ins_query, conn)
+            if (_.isEmpty(update_q)) {
+              return intern.insertrow({
+                into: ent_table,
+                values: compact(new_entp)
+              }, { db: trx }, (err) => {
+                if (err) {
+                  return end_of_transaction(err)
+                }
 
                 // NOTE: Because MySQL does not support "RETURNING", we must fetch
                 // the entity in a separate trip to the db. We can fetch the entity
@@ -425,84 +353,100 @@ function mysql_store (options) {
                 // the query is unique by definition, because upserts can only work
                 // for unique keys.
                 //
-                const sel_query = Q.selectstm({
+                return intern.selectrows({
                   columns: '*',
                   from: ent_table,
                   where: { id: new_ent.id }
+                }, { db: trx }, (err, rows) => {
+                  if (err) {
+                    return end_of_transaction(err)
+                  }
+
+                  if (0 === rows.length) {
+                    return end_of_transaction()
+                  }
+
+                  return end_of_transaction(null, RelationalStore.makeent(new_ent, rows[0]))
                 })
+              })
+            }
 
-                const rows = await execQueryAsync(sel_query, conn)
+            const update_set = _.clone(new_entp); delete update_set.id
 
-                if (0 === rows.length) {
-                  return end_of_transaction()
-                }
-
-                return end_of_transaction(null, RelationalStore.makeent(new_ent, rows[0]))
+            return intern.updaterows({
+              table: ent_table,
+              where: update_q,
+              set: update_set
+            }, { db: trx }, (err) => {
+              if (err) {
+                return end_of_transaction(err)
               }
-
-              // NOTE: This code cannot be replaced with updateEnt. updateEnt updates
-              // records by the id. The id in this `ent` is the new id.
-              //
-              // TODO: Re-consider the logic.
-              //
-              const update_set = _.clone(new_entp); delete update_set.id
-              const update_query = Q.updatestm({ table: ent_table, where: update_q, set: update_set })
-
-              await execQueryAsync({
-                sql: update_query.text,
-                bindings: update_query.values
-              }, conn)
 
               // TODO: TODO:
               //
               const ins_select_query = QueryBuilder.insertwherenotexistsstm(new_ent, update_q)
 
-              await execQueryAsync({
-                sql: ins_select_query.text,
-                bindings: ins_select_query.values
-              }, conn)
+              return intern.execquery(ins_select_query, { db: trx }, (err) => {
+                if (err) {
+                  return end_of_transaction(err)
+                }
 
-              // NOTE: Because MySQL does not support "RETURNING", we must fetch
-              // the entity in a separate trip to the db. We can fetch the entity
-              // by the query and not worry about duplicates - this is because
-              // the query is unique by definition, because upserts can only work
-              // for unique keys.
-              //
-              const sel_query = Q.selectstm({ columns: '*', from: ent_table, where: update_q })
-              const rows = await execQueryAsync(sel_query, conn)
+                // NOTE: Because MySQL does not support "RETURNING", we must fetch
+                // the entity in a separate trip to the db. We can fetch the entity
+                // by the query and not worry about duplicates - this is because
+                // the query is unique by definition, because upserts can only work
+                // for unique keys.
+                //
+                return intern.selectrows({
+                  columns: '*',
+                  from: ent_table,
+                  where: update_q
+                }, { db: internals.connectionPool }, (err, rows) => {
+                  if (err) {
+                    return end_of_transaction(err)
+                  }
 
-              if (0 === rows.length) {
-                return end_of_transaction()
-              }
+                  if (0 === rows.length) {
+                    return end_of_transaction()
+                  }
 
-              return end_of_transaction(null, RelationalStore.makeent(new_ent, rows[0]))
-            } catch (err) {
-              return end_of_transaction(err)
-            }
+                  const row = rows[0]
+
+                  return end_of_transaction(null, RelationalStore.makeent(new_ent, row))
+                })
+              })
+            })
           }, done)
         }
 
 
-        const ins_sql = Q.insertstm({ into: ent_table, values: compact(new_entp) })
+        return intern.insertrow({
+          into: ent_table,
+          values: compact(new_entp)
+        }, { db: internals.connectionPool }, (err) => {
+          if (err) {
+            return done(err)
+          }
 
-        await execQueryAsync(ins_sql)
+          return intern.selectrows({
+            columns: '*',
+            from: ent_table,
+            where: { id: new_ent.id }
+          }, { db: internals.connectionPool }, (err, rows) => {
+            if (err) {
+              return done(err)
+            }
 
+            if (0 === rows.length) {
+              return done()
+            }
 
-        const sel_query = Q.selectstm({
-          columns: '*',
-          from: ent_table,
-          where: { id: new_ent.id }
+            const row = rows[0]
+
+            return done(null, RelationalStore.makeent(new_ent, row))
+          })
         })
-
-        const rows = await execQueryAsync(sel_query)
-
-        if (0 === rows.length) {
-          return resolve()
-        }
-
-        return resolve(RelationalStore.makeent(new_ent, rows[0]))
       })
-        .then(done).catch(done)
 
       function isUpsert (ent, q) {
         if (!Array.isArray(q.upsert$)) {
@@ -539,17 +483,14 @@ function mysql_store (options) {
       }
 
 
-      const sel_query = Q.selectstm({
+      return intern.selectrows({
         columns: '*',
         from: ent_table,
         where,
         limit: 1,
         offset: 0 <= q.skip$ ? q.skip$ : null,
         order_by: q.sort$ || null
-      })
-
-
-      return execQuery(sel_query, (err, rows) => {
+      }, { db: internals.connectionPool }, (err, rows) => {
         if (err) {
           return done(err)
         }
@@ -570,16 +511,19 @@ function mysql_store (options) {
       const seneca = this
       const sel_query = buildListQuery(args, { seneca })
 
-      return execQuery(sel_query, (err, rows) => {
-        if (err) {
-          return done(err)
-        }
+      return intern.execquery(
+        sel_query,
+        { db: internals.connectionPool },
+        (err, rows) => {
+          if (err) {
+            return done(err)
+          }
 
-        const { qent } = args
-        const out = rows.map(row => RelationalStore.makeent(qent, row))
+          const { qent } = args
+          const out = rows.map(row => RelationalStore.makeent(qent, row))
 
-        return done(null, out)
-      })
+          return done(null, out)
+        })
 
 
       function buildListQuery(args, ctx) {
@@ -628,28 +572,24 @@ function mysql_store (options) {
       const ent_table = RelationalStore.tablename(qent)
 
       if (q.all$) {
-        const sel_query = Q.selectstm({
+        return intern.selectrows({
           columns: ['id'],
           from: ent_table,
           where: seneca.util.clean(q),
           limit: 0 <= q.limit$ ? q.limit$ : null,
           offset: 0 <= q.skip$ ? q.skip$ : null,
           order_by: q.sort$ || null
-        })
-
-        return execQuery(sel_query, function (err, rows) {
+        }, { db: internals.connectionPool }, (err, rows) => {
           if (err) {
             return done(err)
           }
 
-          const del_query = Q.deletestm({
+          return intern.deleterows({
             from: ent_table,
             where: {
               id: rows.map(x => x.id)
             }
-          })
-
-          return execQuery(del_query, function (err, _) {
+          }, { db: internals.connectionPool }, (err, _) => {
             if (err) {
               return done(err)
             }
@@ -660,17 +600,14 @@ function mysql_store (options) {
       }
 
 
-      const sel_query = Q.selectstm({
+      return intern.selectrows({
         columns: '*',
         from: ent_table,
         where: seneca.util.clean(q),
         limit: 1,
         offset: 0 <= q.skip$ ? q.skip$ : null,
         order_by: q.sort$ || null
-      })
-
-
-      return execQuery(sel_query, function (err, rows) {
+      }, { db: internals.connectionPool }, (err, rows) => {
         if (err) {
           return done(err)
         }
@@ -682,14 +619,12 @@ function mysql_store (options) {
 
         const row = rows[0]
 
-        const del_query = Q.deletestm({
+        return intern.deleterows({
           from: ent_table,
           where: {
             id: row.id
           }
-        })
-
-        return execQuery(del_query, function (err) {
+        }, { db: internals.connectionPool }, (err) => {
           if (err) {
             return done(err)
           }
