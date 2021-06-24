@@ -8,7 +8,6 @@ var Uuid = require('node-uuid')
 var DefaultConfig = require('./default_config.json')
 var QueryBuilder = require('./query-builder')
 var RelationalStore = require('./lib/relational-util')
-const Knex = require('knex')({ client: 'mysql' })
 const Q = require('./lib/qbuilder')
 
 var Eraro = require('eraro')({
@@ -747,50 +746,6 @@ function mysql_store (options) {
   })
 
   return {name: store.name, tag: meta.tag}
-}
-
-class Helpers {
-  static select(qent, q, seneca) {
-    const ent_table = RelationalStore.tablename(qent)
-
-
-    let query
-
-    query = Knex.select('*').from(ent_table)
-
-
-    if ('string' === typeof q) {
-      query = query.where({ id: q })
-    } else if (Array.isArray(q)) {
-      query = query.whereIn('id', q)
-    } else {
-      const where = seneca.util.clean(q)
-      query = query.where(where)
-    }
-
-
-    if ('number' === typeof q.limit$ && 0 <= q.limit$) {
-      query = query.limit(q.limit$)
-    }
-
-
-    if ('number' === typeof q.skip$ && 0 <= q.skip$) {
-      query = query.offset(q.skip$)
-    }
-
-
-    if (null != q.sort$) {
-      const order_by = Object.keys(q.sort$)
-        .map(column => {
-          const order = q.sort$[column] < 0 ? 'desc' : 'asc'
-          return { column, order }
-        })
-
-      query = query.orderBy(order_by)
-    }
-
-    return query
-  }
 }
 
 function compact(obj) {
