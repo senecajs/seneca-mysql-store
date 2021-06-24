@@ -332,7 +332,7 @@ function mysql_store (options) {
     },
 
 
-    save: function (args, done) {
+    save(args, done) {
       return new Promise(async (resolve, reject) => {
         const seneca = this
         const { ent, q } = args
@@ -340,18 +340,31 @@ function mysql_store (options) {
 
         if (isUpdate(ent)) {
           const entp = RelationalStore.makeentp(ent)
-          const update_sql = Knex(ent_table).update(entp).where('id', ent.id).toSQL()
 
-          const update = await execQueryAsync(update_sql)
+          const update_query = Q.updatestm({
+            table: ent_table,
+            set: compact(entp),
+            where: { id: ent.id }
+          })
+
+          const update = await execQueryAsync(update_query)
           const updated_anything = update.affectedRows > 0
 
           if (!updated_anything) {
-            const ins_sql = Knex(ent_table).insert(entp).toSQL()
+            const ins_query = Q.insertstm({
+              into: ent_table,
+              values: compact(entp)
+            })
 
-            await execQueryAsync(ins_sql)
+            await execQueryAsync(ins_query)
 
-            const sel_sql = Knex.select('*').from(ent_table).where('id', ent.id).toSQL()
-            const rows = await execQueryAsync(sel_sql)
+            const sel_query = Q.selectstm({
+              from: ent_table,
+              columns: '*',
+              where: { id: ent.id }
+            })
+
+            const rows = await execQueryAsync(sel_query)
 
             if (0 === rows.length) {
               return resolve()
@@ -360,8 +373,13 @@ function mysql_store (options) {
             return resolve(RelationalStore.makeent(ent, rows[0]))
           }
 
-          const sel_sql = Knex.select('*').from(ent_table).where('id', ent.id).toSQL()
-          const rows = await execQueryAsync(sel_sql)
+          const sel_query = Q.selectstm({
+            from: ent_table,
+            columns: '*',
+            where: { id: ent.id }
+          })
+
+          const rows = await execQueryAsync(sel_query)
 
           if (0 === rows.length) {
             return resolve()
@@ -398,9 +416,9 @@ function mysql_store (options) {
 
 
               if (_.isEmpty(update_q)) {
-                const ins_sql = Knex(ent_table).insert(new_entp).toSQL()
+                const ins_query = Q.insertstm({ into: ent_table, values: compact(new_entp) })
 
-                await execQueryAsync(ins_sql, conn)
+                await execQueryAsync(ins_query, conn)
 
                 // NOTE: Because MySQL does not support "RETURNING", we must fetch
                 // the entity in a separate trip to the db. We can fetch the entity
@@ -408,8 +426,13 @@ function mysql_store (options) {
                 // the query is unique by definition, because upserts can only work
                 // for unique keys.
                 //
-                const sel_sql = Knex.select('*').from(ent_table).where('id', new_ent.id).toSQL()
-                const rows = await execQueryAsync(sel_sql, conn)
+                const sel_query = Q.selectstm({
+                  columns: '*',
+                  from: ent_table,
+                  where: { id: new_ent.id }
+                })
+
+                const rows = await execQueryAsync(sel_query, conn)
 
                 if (0 === rows.length) {
                   return end_of_transaction()
@@ -424,13 +447,15 @@ function mysql_store (options) {
               // TODO: Re-consider the logic.
               //
               const update_set = _.clone(new_entp); delete update_set.id
-              const update_query = QueryBuilder.updatewherestm(update_q, new_ent, update_set)
+              const update_query = Q.updatestm({ table: ent_table, where: update_q, set: update_set })
 
               await execQueryAsync({
                 sql: update_query.text,
                 bindings: update_query.values
               }, conn)
 
+              // TODO: TODO:
+              //
               const ins_select_query = QueryBuilder.insertwherenotexistsstm(new_ent, update_q)
 
               await execQueryAsync({
@@ -444,8 +469,8 @@ function mysql_store (options) {
               // the query is unique by definition, because upserts can only work
               // for unique keys.
               //
-              const sel_sql = Knex.select('*').from(ent_table).where(update_q).toSQL()
-              const rows = await execQueryAsync(sel_sql, conn)
+              const sel_query = Q.selectstm({ columns: '*', from: ent_table, where: update_q })
+              const rows = await execQueryAsync(sel_query, conn)
 
               if (0 === rows.length) {
                 return end_of_transaction()
@@ -459,12 +484,18 @@ function mysql_store (options) {
         }
 
 
-        const ins_sql = Knex(ent_table).insert(new_entp).toSQL()
+        const ins_sql = Q.insertstm({ into: ent_table, values: compact(new_entp) })
 
         await execQueryAsync(ins_sql)
 
-        const sel_sql = Knex.select('*').from(ent_table).where('id', new_ent.id).toSQL()
-        const rows = await execQueryAsync(sel_sql)
+
+        const sel_query = Q.selectstm({
+          columns: '*',
+          from: ent_table,
+          where: { id: new_ent.id }
+        })
+
+        const rows = await execQueryAsync(sel_query)
 
         if (0 === rows.length) {
           return resolve()
@@ -760,6 +791,16 @@ class Helpers {
 
     return query
   }
+}
+
+function compact(obj) {
+  return Object.keys(obj)
+    .map(k => [k, obj[k]])
+    .filter(([, v]) => undefined !== v)
+    .reduce((acc, [k, v]) => {
+      acc[k] = v
+      return acc
+    }, {})
 }
 
 module.exports = mysql_store
