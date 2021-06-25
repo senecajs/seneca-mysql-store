@@ -8,7 +8,6 @@ var Uuid = require('node-uuid')
 var DefaultConfig = require('./default_config.json')
 var QueryBuilder = require('./query-builder')
 
-const RelationalStore = require('./lib/relational-util')
 const Q = require('./lib/qbuilder')
 
 const { intern } = require('./lib/intern')
@@ -208,7 +207,7 @@ function mysql_store (options) {
 
       if (null != nat_query) {
         const rows = await intern.execquery(nat_query, ctx)
-        return rows.map(row => RelationalStore.makeent(qent, row))
+        return rows.map(row => intern.makeent(qent, row))
       }
 
       const where = intern.where_of_q(q, ctx)
