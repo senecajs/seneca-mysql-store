@@ -1,30 +1,28 @@
-'use strict'
-
-var Assert = require('assert')
+const Assert = require('assert')
 const Async = require('async')
-var _ = require('lodash')
-var MySQL = require('mysql')
-var Uuid = require('node-uuid')
-var DefaultConfig = require('./default_config.json')
-var QueryBuilder = require('./query-builder')
+const _ = require('lodash')
+const MySQL = require('mysql')
+const Uuid = require('node-uuid')
+const DefaultConfig = require('./default_config.json')
 
 const Q = require('./lib/qbuilder')
 
 const { intern } = require('./lib/intern')
 const { asyncmethod } = intern
 
-var Eraro = require('eraro')({
+const Eraro = require('eraro')({
   package: 'mysql'
 })
 
-var STORE_NAME = 'mysql-store'
-var ACTION_ROLE = 'sql'
+const STORE_NAME = 'mysql-store'
+const ACTION_ROLE = 'sql'
 
 function mysql_store (options) {
-  var seneca = this
+  const seneca = this
 
-  var opts = seneca.util.deepextend(DefaultConfig, options)
-  var internals = {
+  const opts = seneca.util.deepextend(DefaultConfig, options)
+
+  const internals = {
     name: STORE_NAME,
     opts: opts,
     waitmillis: opts.minwait
@@ -32,17 +30,17 @@ function mysql_store (options) {
 
   internals.connectionPool = {
     query: function (query, inputs, cb) {
-      var startDate = new Date()
+      const startDate = new Date()
 
       // Print a report abouts operation and time to execute
       function report (err) {
-        var log = {
+        const log = {
           query: query,
           inputs: inputs,
           time: (new Date()) - startDate
         }
 
-        for (var i in internals.benchmark.rules) {
+        for (const i in internals.benchmark.rules) {
           if (log.time > internals.benchmark.rules[i].time) {
             log.tag = internals.benchmark.rules[i].tag
           }
@@ -84,7 +82,7 @@ function mysql_store (options) {
   // If error then increase time to wait and try again
   /* TODO: QUESTION: What do we do with this?
    *
-  var reconnect = function () {
+  function reconnect() {
     configure(internals.spec, function (err, me) {
       if (err) {
         seneca.log.debug('db reconnect (wait ' + internals.opts.minwait + 'ms) failed: ', err)
@@ -108,15 +106,13 @@ function mysql_store (options) {
   // <li>spec - store specific configuration<br>
   // <li>cb - callback
   // </ul>
-  function configure (specification, cb) {
-    Assert(specification)
-    Assert(cb)
-    internals.spec = specification
+  function configure (spec, cb) {
+    internals.spec = spec
 
-    var conf = 'string' === typeof (internals.spec) ? null : internals.spec
+    const conf = 'string' === typeof (internals.spec) ? null : internals.spec
     if (!conf) {
       conf = {}
-      var urlM = /^mysql:\/\/((.*?):(.*?)@)?(.*?)(:?(\d+))?\/(.*?)$/.exec(internals.spec)
+      const urlM = /^mysql:\/\/((.*?):(.*?)@)?(.*?)(:?(\d+))?\/(.*?)$/.exec(internals.spec)
       conf.name = urlM[7]
       conf.port = urlM[6]
       conf.server = urlM[4]
@@ -125,7 +121,7 @@ function mysql_store (options) {
       conf.port = conf.port ? parseInt(conf.port, 10) : null
     }
 
-    var defaultConn = {
+    const defaultConn = {
       connectionLimit: conf.poolSize || 5,
       host: conf.host,
       user: conf.user || conf.username,
@@ -133,7 +129,7 @@ function mysql_store (options) {
       database: conf.name,
       port: conf.port || 3306
     }
-    var conn = conf.conn || defaultConn
+    const conn = conf.conn || defaultConn
     internals.connectionPool = MySQL.createPool(conn)
 
     // handleDisconnect()
@@ -149,18 +145,14 @@ function mysql_store (options) {
     })
   }
 
-  // The store interface returned to seneca
-  var store = {
+  const store = {
     name: STORE_NAME,
 
-    // Close the connection
     close: function (cmd, cb) {
-      Assert(cb)
-
       if (internals.connectionPool) {
         internals.connectionPool.end(function (err) {
           if (err) {
-            throw Eraro({code: 'connection/end', store: internals.name, error: err})
+            throw Eraro({ code: 'connection/end', store: internals.name, error: err })
           }
           cb()
         })
@@ -242,7 +234,7 @@ function mysql_store (options) {
   /**
    * Initialization
    */
-  var meta = seneca.store.init(seneca, opts, store)
+  const meta = seneca.store.init(seneca, opts, store)
 
   internals.desc = meta.desc
 
@@ -256,25 +248,7 @@ function mysql_store (options) {
     })
   })
 
-  // TODO: Remove this?
-  //
-  seneca.add({role: ACTION_ROLE, hook: 'load'}, function (args, done) {
-    var q = _.clone(args.q)
-    var qent = args.qent
-    q.limit$ = 1
-
-    QueryBuilder.selectstm(qent, q, function (err, query) {
-      return done(err, {query: query})
-    })
-  })
-
-  // TODO: Remove this?
-  //
-  seneca.add({ role: ACTION_ROLE, hook: 'generate_id', target: store.name }, function (args, done) {
-    return done(null, intern.generateid())
-  })
-
-  return {name: store.name, tag: meta.tag}
+  return { name: store.name, tag: meta.tag }
 }
 
 

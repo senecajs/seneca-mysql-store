@@ -5,15 +5,13 @@
  * execute script/schema.sql to create
  */
 
-'use strict'
+const Seneca = require('seneca')
+const Shared = require('seneca-store-test')
+const Extra = require('./mysql.ext.test.js')
+const Autoincrement = require('./mysql.autoincrement.test.js')
 
-var Seneca = require('seneca')
-var Shared = require('seneca-store-test')
-var Extra = require('./mysql.ext.test.js')
-var Autoincrement = require('./mysql.autoincrement.test.js')
-
-var Lab = require('@hapi/lab')
-var lab = exports.lab = Lab.script()
+const Lab = require('@hapi/lab')
+const lab = exports.lab = Lab.script()
 const { describe, before, after } = lab
 
 const DbConfig = require('./support/db/config')
