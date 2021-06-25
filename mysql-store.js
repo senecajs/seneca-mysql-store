@@ -4,18 +4,14 @@ const _ = require('lodash')
 const MySQL = require('mysql')
 const Uuid = require('node-uuid')
 const DefaultConfig = require('./default_config.json')
+const Eraro = require('eraro')({ package: 'mysql' })
 
 const Q = require('./lib/qbuilder')
 
 const { intern } = require('./lib/intern')
 const { asyncmethod } = intern
 
-const Eraro = require('eraro')({
-  package: 'mysql'
-})
-
 const STORE_NAME = 'mysql-store'
-const ACTION_ROLE = 'sql'
 
 function mysql_store (options) {
   const seneca = this
@@ -24,104 +20,13 @@ function mysql_store (options) {
 
   const internals = {
     name: STORE_NAME,
-    opts: opts,
-    waitmillis: opts.minwait
+    opts
   }
 
-  internals.connectionPool = {
-    query: function (query, inputs, cb) {
-      const startDate = new Date()
+  function configure (spec, done) {
+    const conf = get_config(spec)
 
-      // Print a report abouts operation and time to execute
-      function report (err) {
-        const log = {
-          query: query,
-          inputs: inputs,
-          time: (new Date()) - startDate
-        }
-
-        for (const i in internals.benchmark.rules) {
-          if (log.time > internals.benchmark.rules[i].time) {
-            log.tag = internals.benchmark.rules[i].tag
-          }
-        }
-
-        if (err) {
-          log.err = err
-        }
-
-        seneca.log[internals.opts.query_log_level || 'debug'](internals.name, log)
-
-        return cb.apply(this, arguments)
-      }
-
-
-      if (cb === undefined) {
-        cb = inputs
-        inputs = undefined
-      }
-
-      if (inputs === undefined) {
-        return internals.connectionPool.query(internals.connectionPool, query, report)
-      }
-      else {
-        return internals.connectionPool.query(internals.connectionPool, query, inputs, report)
-      }
-    },
-
-    escape: function () {
-      return internals.connectionPool.escape.apply(internals.connectionPool, arguments)
-    },
-
-    format: function () {
-      return MySQL.format.apply(MySQL, arguments)
-    }
-  }
-
-  // Try to reconnect.<br>
-  // If error then increase time to wait and try again
-  /* TODO: QUESTION: What do we do with this?
-   *
-  function reconnect() {
-    configure(internals.spec, function (err, me) {
-      if (err) {
-        seneca.log.debug('db reconnect (wait ' + internals.opts.minwait + 'ms) failed: ', err)
-        internals.waitmillis = Math.min(2 * internals.waitmillis, internals.opts.maxwait)
-        setTimeout(function () {
-          reconnect()
-        }, internals.waitmillis)
-      }
-      else {
-        internals.waitmillis = internals.opts.minwait
-        seneca.log.debug('reconnect ok')
-      }
-    })
-  }
-  */
-
-
-  // Configure the store - create a new store specific connection object<br>
-  // Params:<br>
-  // <ul>
-  // <li>spec - store specific configuration<br>
-  // <li>cb - callback
-  // </ul>
-  function configure (spec, cb) {
-    internals.spec = spec
-
-    const conf = 'string' === typeof (internals.spec) ? null : internals.spec
-    if (!conf) {
-      conf = {}
-      const urlM = /^mysql:\/\/((.*?):(.*?)@)?(.*?)(:?(\d+))?\/(.*?)$/.exec(internals.spec)
-      conf.name = urlM[7]
-      conf.port = urlM[6]
-      conf.server = urlM[4]
-      conf.username = urlM[2]
-      conf.password = urlM[3]
-      conf.port = conf.port ? parseInt(conf.port, 10) : null
-    }
-
-    const defaultConn = {
+    const default_conn = {
       connectionLimit: conf.poolSize || 5,
       host: conf.host,
       user: conf.user || conf.username,
@@ -129,37 +34,58 @@ function mysql_store (options) {
       database: conf.name,
       port: conf.port || 3306
     }
-    const conn = conf.conn || defaultConn
-    internals.connectionPool = MySQL.createPool(conn)
 
-    // handleDisconnect()
-    internals.connectionPool.getConnection(function (err, conn) {
+    const conn = conf.conn || default_conn
+
+    internals.connectionPool = MySQL.createPool(conn)
+    internals.spec = spec
+
+    return internals.connectionPool.getConnection((err, conn) => {
       if (err) {
-        return cb(err)
+        return done(err)
       }
 
-      internals.waitmillis = internals.opts.minwait
       seneca.log.debug({tag$: 'init'}, 'db open and authed for ' + conf.username)
       conn.release()
-      cb(null, store)
+
+      return done(null, store)
     })
+
+    function get_config(spec) {
+      if ('string' === typeof spec) {
+	const urlM = /^mysql:\/\/((.*?):(.*?)@)?(.*?)(:?(\d+))?\/(.*?)$/.exec(internals.spec)
+
+	const conf = {
+	  name: urlM[7],
+	  port: urlM[6],
+	  server: urlM[4],
+	  username: urlM[2],
+	  password: urlM[3],
+	  port: parseInt(conf.port, 10) || null
+	}
+
+	return conf
+      }
+
+      return spec
+    }
   }
 
   const store = {
     name: STORE_NAME,
 
-    close: function (cmd, cb) {
-      if (internals.connectionPool) {
-        internals.connectionPool.end(function (err) {
-          if (err) {
-            throw Eraro({ code: 'connection/end', store: internals.name, error: err })
-          }
-          cb()
-        })
+    close(_msg, done) {
+      if (!internals.connectionPool) {
+      	return done()
       }
-      else {
-        cb()
-      }
+
+      return internals.connectionPool.end((err) => {
+	if (err) {
+	  throw Eraro({ code: 'connection/end', store: internals.name, error: err })
+	}
+
+	return done()
+      })
     },
 
     save: asyncmethod(async function (msg) {
@@ -230,15 +156,12 @@ function mysql_store (options) {
     })
   }
 
-
-  /**
-   * Initialization
-   */
+  
   const meta = seneca.store.init(seneca, opts, store)
 
   internals.desc = meta.desc
 
-  seneca.add({init: store.name, tag: meta.tag}, function (args, done) {
+  seneca.add({ init: store.name, tag: meta.tag }, function (args, done) {
     configure(internals.opts, function (err) {
       if (err) {
         seneca.log.error('err: ', err)
