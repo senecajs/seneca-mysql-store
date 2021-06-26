@@ -18,14 +18,19 @@ describe('qbuilder', () => {
 
   it('', async () => {
     const sel_node = select({
-      from: 'users',
       columns: ['id', 'email'],
+      from: 'users',
+      where: exists(select({
+        columns: '*',
+        from: 'users',
+        where: { id: 'aaaa' }
+      })),
       limit: 1,
       offset: 5,
       order_by: { email: -1, id: 1 }
     })
 
-    console.dir(sel_node), { depth: 8 }
+    console.dir(sel_node, { depth: null })
     console.dir(toSql(sel_node), { depth: 4 })
   })
 })
@@ -54,12 +59,13 @@ function insert(args) {
 }
 
 /*
-type expr_t = 
+type expr_t = [
 | select_t
 | expr_null_t
 | expr_not_t
 | expr_eq_t
 | expr_exists_t
+]
 
 type expr_null_t = {
   expr$: expr_t
@@ -69,15 +75,30 @@ type expr_not_t = {
   expr$: expr_t
 }
 
+type expr_in_t = {
+  unsafe_args$: 'a array
+}
+
 type expr_eq_t = {
   column$: string;
-  unsafe_arg$: a'
+  value$: 'a
 }
 
 type expr_exists_t = {
+  whatami$: 'expr_exists_t';
   expr$: select_t
 }
 */
+
+function exists(expr) {
+  Assert(expr, 'expr')
+  Assert.strictEqual(expr.whatami$, 'select_t')
+
+  return {
+    whatami$: 'expr_exists_t',
+    expr$: expr
+  }
+}
 
 /*
   type select_t = {
@@ -89,13 +110,42 @@ type expr_exists_t = {
   }
  */
 
+function where(obj) {
+  if ('string' === typeof obj.whatami$) {
+    return obj
+  }
+
+  const kvs = Object.keys(obj).map(k => [k, obj[k]])
+
+  const expr = kvs.reduce((acc, [colname, x]) => {
+    const eq_expr = 'string' === typeof x.whatami$ ? x : {
+      whatami$: 'expr_eq_t',
+      column$: colname,
+      value$: x
+    }
+
+    if (!acc) {
+      return eq_expr
+    }
+
+    return {
+      whatami$: 'expr_and_t',
+      lexpr$: acc,
+      rexpr$: eq_expr
+    }
+  }, null)
+
+  return expr 
+}
+
 function select(args) {
   const {
     from,
     columns = '*',
     offset = null,
     limit = null,
-    order_by = null
+    order_by = null,
+    where: w
   } = args
 
   return {
@@ -104,7 +154,8 @@ function select(args) {
     columns$: columns,
     offset$: offset,
     limit$: limit,
-    order_by$: order_by
+    order_by$: order_by,
+    where$: where(w)
   }
 }
 
@@ -149,13 +200,47 @@ function sqlOfOrderBy(node) {
   return { sql, bindings }
 }
 
+function sqlOfExpr(node) {
+  if ('select_t' === node.whatami$) {
+    return sqlOfSelect(node)
+  }
+
+  if ('expr_eq_t' === node.whatami$) {
+    return {
+      sql: '?? = ?',
+      bindings: [node.column$, node.value$]
+    }
+  }
+
+  if ('expr_exists_t' === node.whatami$) {
+    return sqlOfExistsExpr(node)
+  }
+
+  if ('expr_and_t' === node.whatami$) {
+    const { lexpr$, rexpr$ } = node
+
+    const lexpr_sql = sqlOfExpr(lexpr$)
+    const rexpr_sql = sqlOfExpr(rexpr$)
+
+    return {
+      sql: lexpr_sql.sql + ' and ' + rexpr_sql.sql,
+      bindings: [].concat(lexpr_sql.bindings, rexpr_sql.bindings)
+    }
+  }
+
+  Assert.fail(`Unknown expression type: "${node.whatami$}"`)
+}
+
 function sqlOfSelect(node) {
+  Assert.strictEqual(node.whatami$, 'select_t')
+
   const {
     from$,
     columns$ = '*',
     offset$ = null,
     limit$ = null,
-    order_by$ = null
+    order_by$ = null,
+    where$ = null
   } = node
 
 
@@ -178,6 +263,14 @@ function sqlOfSelect(node) {
 
   sql += ' from ??'
   bindings.push(from$)
+
+
+  if (null != where$) {
+    const where = sqlOfExpr(where$)
+
+    sql += ' where ' + where.sql
+    bindings = bindings.concat(where.bindings)
+  }
 
 
   if (null != order_by$) {
@@ -203,27 +296,17 @@ function sqlOfSelect(node) {
   return { sql, bindings }
 }
 
-/*
-function sqlOfExpr(node) {
-  if ('select_t' === node.whatami$) {
-    throw new Error('select_t not implemented')
-  }
+function sqlOfExistsExpr(node) {
+  Assert.strictEqual(node.whatami$, 'expr_exists_t')
 
-  if ('expr_null_t' === node.whatami$) {
-    throw new Error('not implemented')
-  }
+  const { expr$ } = node
+  const q = sqlOfSelect(expr$)
 
-  if ('expr_eq_t' === node.whatami$) {
-    throw new Error('not implemented')
+  return {
+    sql: 'exists (' + q.sql + ')',
+    bindings: q.bindings
   }
-
-  if ('expr_exists_t' === node.whatami$) {
-    throw new Error('not implemented')
-  }
-
-  throw new Error(`Unknown expression type: ${node.whatami$}`)
 }
-*/
 
 function sqlOfInsert(node) {
   Assert.strictEqual(node.whatami$, 'insert_t', 'node.whatami$')
