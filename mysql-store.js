@@ -2,6 +2,7 @@ const MySQL = require('mysql')
 const DefaultConfig = require('./default_config.json')
 const Eraro = require('eraro')({ package: 'mysql' })
 
+const Util = require('util')
 const { intern } = require('./lib/intern')
 const { asyncmethod } = intern
 
@@ -36,10 +37,11 @@ function mysql_store (options) {
 
     return internals.connectionPool.getConnection((err, conn) => {
       if (err) {
+        seneca.log.error(`Failed to connect to the db as ${conf.username}`, err)
         return done(err)
       }
 
-      seneca.log.debug({tag$: 'init'}, 'db open and authed for ' + conf.username)
+      seneca.log.debug(`Connected to the db as ${conf.username}`)
       conn.release()
 
       return done(null, store)
@@ -67,19 +69,26 @@ function mysql_store (options) {
   const store = {
     name: STORE_NAME,
 
-    close(_msg, done) {
-      if (!internals.connectionPool) {
-        return done()
-      }
+    close: asyncmethod(async function (_msg) {
+      const { connectionPool: pool = null } = internals
 
-      return internals.connectionPool.end((err) => {
-        if (err) {
-          return done(Eraro({ code: 'connection/end', store: internals.name, error: err }))
+      if (pool) {
+        const end = Util.promisify(pool.end).bind(pool)
+
+        try {
+          await end()
+          seneca.log.debug('Closed the connection to the db')
+        } catch (err) {
+          seneca.log.error('Failed to close the connection to the db', err)
+
+          throw Eraro({
+            code: 'connection/end',
+            store: internals.name,
+            error: err
+          })
         }
-
-        return done()
-      })
-    },
+      }
+    }),
 
     save: asyncmethod(async function (msg) {
       const seneca = this
@@ -99,13 +108,17 @@ function mysql_store (options) {
 
       const where = intern.where_of_q(q, ctx)
 
-      return intern.loadent({
+      const out = await intern.loadent({
         ent: qent,
         where,
         limit: 1,
         offset: 0 <= q.skip$ ? q.skip$ : null,
         order_by: q.sort$ || null
       }, ctx)
+
+      seneca.log.debug('load', 'ok', q, out)
+
+      return out
     }),
 
     list: asyncmethod(async function (msg) {
@@ -113,22 +126,29 @@ function mysql_store (options) {
       const { qent, q } = msg
       const ctx = { seneca, db: internals.connectionPool }
 
+
+      let out
+
       const nat_query = intern.is_native(msg)
 
-      if (null != nat_query) {
+      if (null == nat_query) {
+        const where = intern.where_of_q(q, ctx)
+
+        out = await intern.listents({
+          ent: qent,
+          where,
+          limit: 0 <= q.limit$ ? q.limit$ : null,
+          offset: 0 <= q.skip$ ? q.skip$ : null,
+          order_by: q.sort$ || null
+        }, ctx)
+      } else {
         const rows = await intern.execquery(nat_query, ctx)
-        return rows.map(row => intern.makeent(qent, row))
+        out = rows.map(row => intern.makeent(qent, row))
       }
 
-      const where = intern.where_of_q(q, ctx)
+      seneca.log.debug('list', 'ok', q, out.length)
 
-      return intern.listents({
-        ent: qent,
-        where,
-        limit: 0 <= q.limit$ ? q.limit$ : null,
-        offset: 0 <= q.skip$ ? q.skip$ : null,
-        order_by: q.sort$ || null
-      }, ctx)
+      return out
     }),
 
     remove: asyncmethod(async function (msg) {
@@ -136,11 +156,20 @@ function mysql_store (options) {
       const { q } = msg
       const ctx = { seneca, db: internals.connectionPool }
 
+      let op_name
+      let out
+
       if (q.all$) {
-        return intern.remove_many(msg, ctx)
+        op_name = 'remove/all'
+        out = await intern.remove_many(msg, ctx)
+      } else {
+        op_name = 'remove/one'
+        out = await intern.remove_one(msg, ctx)
       }
 
-      return intern.remove_one(msg, ctx)
+      seneca.log.debug(op_name, 'ok', q)
+
+      return out
     }),
 
     native: asyncmethod(async function (_msg) {
@@ -156,11 +185,15 @@ function mysql_store (options) {
   seneca.add({ init: store.name, tag: meta.tag }, function (args, done) {
     configure(internals.opts, function (err) {
       if (err) {
-        seneca.log.error('err: ', err)
-        return done(Eraro('entity/configure', 'store: ' + store.name, 'error: ' + err, 'desc: ' + internals.desc))
-      } else {
-        return done()
+        return done(Eraro(
+          'entity/configure',
+          'store: ' + store.name,
+          'error: ' + err,
+          'desc: ' + internals.desc
+        ))
       }
+
+      return done()
     })
   })
 
