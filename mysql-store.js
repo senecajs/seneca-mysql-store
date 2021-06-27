@@ -1,12 +1,6 @@
-const Assert = require('assert')
-const Async = require('async')
-const _ = require('lodash')
 const MySQL = require('mysql')
-const Uuid = require('node-uuid')
 const DefaultConfig = require('./default_config.json')
 const Eraro = require('eraro')({ package: 'mysql' })
-
-const Q = require('./lib/qbuilder')
 
 const { intern } = require('./lib/intern')
 const { asyncmethod } = intern
@@ -53,18 +47,17 @@ function mysql_store (options) {
 
     function get_config(spec) {
       if ('string' === typeof spec) {
-	const urlM = /^mysql:\/\/((.*?):(.*?)@)?(.*?)(:?(\d+))?\/(.*?)$/.exec(internals.spec)
+        const urlM = /^mysql:\/\/((.*?):(.*?)@)?(.*?)(:?(\d+))?\/(.*?)$/.exec(spec)
 
-	const conf = {
-	  name: urlM[7],
-	  port: urlM[6],
-	  server: urlM[4],
-	  username: urlM[2],
-	  password: urlM[3],
-	  port: parseInt(conf.port, 10) || null
-	}
+        const conf = {
+          name: urlM[7],
+          server: urlM[4],
+          username: urlM[2],
+          password: urlM[3],
+          port: urlM[6] ? parseInt(conf.port, 10) : null
+        }
 
-	return conf
+        return conf
       }
 
       return spec
@@ -76,21 +69,20 @@ function mysql_store (options) {
 
     close(_msg, done) {
       if (!internals.connectionPool) {
-      	return done()
+        return done()
       }
 
       return internals.connectionPool.end((err) => {
-	if (err) {
-	  throw Eraro({ code: 'connection/end', store: internals.name, error: err })
-	}
+        if (err) {
+          return done(Eraro({ code: 'connection/end', store: internals.name, error: err }))
+        }
 
-	return done()
+        return done()
       })
     },
 
     save: asyncmethod(async function (msg) {
       const seneca = this
-      const { ent, q } = msg
       const ctx = { seneca, db: internals.connectionPool }
 
       if (intern.is_update(msg)) {
@@ -156,7 +148,7 @@ function mysql_store (options) {
     })
   }
 
-  
+
   const meta = seneca.store.init(seneca, opts, store)
 
   internals.desc = meta.desc
@@ -165,9 +157,10 @@ function mysql_store (options) {
     configure(internals.opts, function (err) {
       if (err) {
         seneca.log.error('err: ', err)
-        throw Eraro('entity/configure', 'store: ' + store.name, 'error: ' + err, 'desc: ' + internals.desc)
+        return done(Eraro('entity/configure', 'store: ' + store.name, 'error: ' + err, 'desc: ' + internals.desc))
+      } else {
+        return done()
       }
-      else done()
     })
   })
 

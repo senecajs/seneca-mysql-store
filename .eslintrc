@@ -1,3 +1,10 @@
 {
-  "extends": "seneca"
+  "extends": "seneca",
+  "rules": {
+    "space-before-function-paren": "off",
+    "brace-style": ["error", "1tbs"]
+  },
+  "parserOptions": {
+    "ecmaVersion": 10
+  }
 }
