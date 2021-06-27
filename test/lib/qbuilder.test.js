@@ -20,11 +20,11 @@ describe('qbuilder', () => {
     const sel_node = select({
       columns: ['id', 'email'],
       from: 'users',
-      where: exists(select({
+      where: not(exists(select({
         columns: '*',
         from: 'users',
         where: { id: 'aaaa', email: null, favorite_fruits: ['oranges', 'melon'] }
-      })),
+      }))),
       limit: 1,
       offset: 5,
       order_by: { email: -1, id: 1 }
@@ -71,6 +71,14 @@ class InsertStm extends QNode {
 class Op extends QNode {}
 
 class UnaryOp extends Op {}
+
+class NotOp extends UnaryOp {
+  constructor(args) {
+    super(args)
+
+    this.expr$ = args.expr$
+  }
+}
 
 class ExistsOp extends UnaryOp {
   constructor(args) {
@@ -163,6 +171,10 @@ type expr_exists_t = {
 
 function exists(expr) {
   return new ExistsOp({ expr$: expr })
+}
+
+function not(expr) {
+  return new NotOp({ expr$: expr })
 }
 
 function where(obj) {
@@ -287,6 +299,15 @@ function sqlOfExpr(node) {
     return sqlOfSelect(node)
   }
 
+  if (node instanceof NotOp) {
+    const subexpr_q = sqlOfExpr(node.expr$)
+
+    return {
+      sql: 'not ' + subexpr_q.sql,
+      bindings: subexpr_q.bindings
+    }
+  }
+
   if (node instanceof EqOp) {
     return {
       sql: '?? = ?',
@@ -306,7 +327,7 @@ function sqlOfExpr(node) {
 
     return {
       sql: '?? in (' + tuple.join(', ') + ')',
-      bindings: node.values$
+      bindings: [node.column$, ...node.values$]
     }
   }
 
