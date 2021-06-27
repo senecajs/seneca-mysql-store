@@ -20,11 +20,22 @@ describe('qbuilder', () => {
     const sel_node = select({
       columns: ['id', 'email'],
       from: 'users',
+      /*
       where: not(exists(select({
         columns: '*',
         from: 'users',
         where: { id: 'aaaa', email: null, favorite_fruits: ['oranges', 'melon'] }
       }))),
+      */
+      where: and(
+        { id: 'zzzz', email: 'rr@voxgig.com' },
+
+        not(exists(select({
+          columns: '*',
+          from: 'users',
+          where: { favorite_fruits: ['oranges'] }
+        })))
+      ),
       limit: 1,
       offset: 5,
       order_by: { email: -1, id: 1 }
@@ -91,11 +102,6 @@ class ExistsOp extends UnaryOp {
     this.expr$ = args.expr$
   }
 }
-
-/*
-class NotOp extends UnaryOp {
-}
-*/
 
 class InOp extends UnaryOp {
   constructor(args) {
@@ -177,8 +183,53 @@ function not(expr) {
   return new NotOp({ expr$: expr })
 }
 
+function and(left_val, right_val) {
+  const ensureExpr = v => v instanceof QNode ? v : ObjectExpr.ofObject(v)
+
+  const lexpr = ensureExpr(left_val)
+  const rexpr = ensureExpr(right_val)
+
+  return new AndOp({ lexpr$: lexpr, rexpr$: rexpr })
+}
+
+class ObjectExpr extends QNode {
+  constructor(args) {
+    super(args)
+
+    this.expr$ = args.expr$
+  }
+
+  static ofObject(obj) {
+    const kvs = Object.keys(obj).map(k => [k, obj[k]])
+
+    const expr = kvs.reduce((acc, [colname, x]) => {
+      let subexpr
+
+      if (x instanceof QNode) {
+        subexpr = x
+      } else {
+        if (null == x) {
+          subexpr = new NullOp({ column$: colname })
+        } else if (Array.isArray(x)) {
+          subexpr = new InOp({ column$: colname, values$: x })
+        } else {
+          subexpr = new EqOp({ column$: colname, value$: x })
+        }
+      }
+
+      if (!acc) {
+        return subexpr
+      }
+
+      return new AndOp({ lexpr$: acc, rexpr$: subexpr })
+    }, null)
+
+    return new ObjectExpr({ expr$: expr })
+  }
+}
+
 function where(obj) {
-  if (obj instanceof UnaryOp || obj instanceof BinaryOp) {
+  if (obj instanceof Op) {
     return obj
   }
 
@@ -186,31 +237,7 @@ function where(obj) {
     throw new Error(`The where-object is of the unsupported type`)
   }
 
-  const kvs = Object.keys(obj).map(k => [k, obj[k]])
-
-  const expr = kvs.reduce((acc, [colname, x]) => {
-    let subexpr
-
-    if (x instanceof QNode) {
-      subexpr = x
-    } else {
-      if (null == x) {
-        subexpr = new NullOp({ column$: colname })
-      } else if (Array.isArray(x)) {
-        subexpr = new InOp({ column$: colname, values$: x })
-      } else {
-        subexpr = new EqOp({ column$: colname, value$: x })
-      }
-    }
-
-    if (!acc) {
-      return subexpr
-    }
-
-    return new AndOp({ lexpr$: acc, rexpr$: subexpr })
-  }, null)
-
-  return expr 
+  return ObjectExpr.ofObject(obj)
 }
 
 /*
@@ -345,6 +372,10 @@ function sqlOfExpr(node) {
       sql: lexpr_sql.sql + ' and ' + rexpr_sql.sql,
       bindings: [].concat(lexpr_sql.bindings, rexpr_sql.bindings)
     }
+  }
+
+  if (node instanceof ObjectExpr) {
+    return sqlOfExpr(node.expr$)
   }
 
   Assert.fail(`Unknown expression type: "${node && node.constructor}"`)
