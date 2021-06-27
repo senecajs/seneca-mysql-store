@@ -17,11 +17,10 @@ describe('qbuilder', () => {
   */
 
   it('', async () => {
-    const node = update({
-      table: 'users',
-      set: { id: 'aaa' },
-      limit: 1,
-      order_by: { email: -1, id: 1 }
+    const node = del({
+      from: 'users',
+      where: { id: 'aaa', email: 'elvis@king.com' },
+      limit: 1
     })
 
     console.dir(node, { depth: null })
@@ -34,12 +33,6 @@ const Assert = require('assert')
 
 class QNode {}
 
-/*
-type insert_t = {
-  into$: string;
-  values$: object;
-}
-*/
 function insert(args) {
   const { into, values } = args
 
@@ -52,6 +45,12 @@ function insert(args) {
   })
 }
 
+/*
+type insert_t = {
+  into$: string;
+  values$: object;
+}
+*/
 class InsertStm extends QNode {
   constructor(args) {
     super(args)
@@ -61,6 +60,68 @@ class InsertStm extends QNode {
   }
 }
 
+/*
+type delete_t = {
+  from$: string;
+  where$: expr_t;
+  limit$: int
+}
+*/
+class DelStm extends QNode {
+  constructor(args) {
+    super(args)
+
+    this.from$ = args.from$
+    this.where$ = args.where$ || null
+    this.limit$ = args.limit$ || null
+  }
+}
+
+function del(args) {
+  const { from, limit = null, where: w = null } = args
+
+  return new DelStm({
+    from$: from,
+    limit$: limit,
+    where$: (w ? where(w) : null)
+  })
+}
+
+function sqlOfDel(node) {
+  Assert(node instanceof DelStm, 'node')
+
+  const { from$, where$, limit$ } = node
+
+  let sql = ''
+  let bindings = []
+
+  sql += 'delete from ??'
+  bindings.push(from$)
+
+  if (null != where$) {
+    const where = sqlOfExpr(where$)
+
+    sql += ' where ' + where.sql
+    bindings = bindings.concat(where.bindings)
+  }
+
+  if (null != limit$) {
+    sql += ' limit ?'
+    bindings.push(limit$)
+  }
+
+  return { sql, bindings }
+}
+
+/*
+type update_t = {
+  table$: string;
+  set$: object;
+  limit$: int;
+  where$: expr_t;
+  order_by$: order_by_t
+}
+*/
 class UpdateStm extends QNode {
   constructor(args) {
     super(args)
@@ -215,12 +276,15 @@ function where(obj) {
 }
 
 /*
+  type order_by_t = { [string]: [ -inf..-1 | 0..inf | 'desc' | 'asc' ] }
+
   type select_t = {
     from$: string;
     columns$: string array;
+    where$: expr_t;
     offset$: int;
     limit$: int;
-    order_by$: { [string]: [ -inf..-1 | 0..inf | 'desc' | 'asc' ] }
+    order_by$: order_by_t
   }
 */
 class SelectStm {
@@ -531,6 +595,10 @@ function toSql(node) {
 
   if (node instanceof UpdateStm) {
     return sqlOfUpdate(node)
+  }
+
+  if (node instanceof DelStm) {
+    return sqlOfDel(node)
   }
 
   Assert.fail(`Unknown node type: ${node && node.constructor}`)
