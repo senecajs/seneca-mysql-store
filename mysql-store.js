@@ -17,10 +17,10 @@ function mysql_store (options) {
     opts
   }
 
-  function configure (spec, done) {
+  function configure(spec, done) {
     const conf = get_config(spec)
 
-    const default_conn = {
+    const default_conn_opts = {
       connectionLimit: conf.poolSize || 5,
       host: conf.host,
       user: conf.user || conf.username,
@@ -29,20 +29,13 @@ function mysql_store (options) {
       port: conf.port || 3306
     }
 
-    const conn = conf.conn || default_conn
+    const conn_opts = conf.conn || default_conn_opts
 
-    internals.connectionPool = MySQL.createPool(conn)
+    internals.connectionPool = MySQL.createPool(conn_opts)
     internals.spec = spec
 
-    return internals.connectionPool.getConnection((err, conn) => {
-      if (err) {
-        return done(err)
-      }
+    return ensure_connected(done)
 
-      conn.release()
-
-      return done(null, store)
-    })
 
     function get_config(spec) {
       if ('string' === typeof spec) {
@@ -61,6 +54,19 @@ function mysql_store (options) {
 
       return spec
     }
+
+
+    function ensure_connected(done) {
+      return internals.connectionPool.getConnection((err, conn) => {
+        if (err) {
+          return done(err)
+        }
+
+        conn.release()
+
+        return done()
+      })
+    }
   }
 
   const store = {
@@ -74,7 +80,6 @@ function mysql_store (options) {
 
         try {
           await end()
-          seneca.log.debug('Closed the connection to the db')
         } catch (err) {
           return seneca.fail('connection/end', {
             store: internals.name,
@@ -82,6 +87,8 @@ function mysql_store (options) {
           })
         }
       }
+
+      seneca.log.debug('Closed the connection to the db')
     }),
 
     save: asyncmethod(async function (msg) {
