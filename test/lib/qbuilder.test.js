@@ -23,7 +23,7 @@ describe('qbuilder', () => {
       where: exists(select({
         columns: '*',
         from: 'users',
-        where: { id: 'aaaa' }
+        where: { id: 'aaaa', email: null, favorite_fruits: ['oranges', 'melon'] }
       })),
       limit: 1,
       offset: 5,
@@ -81,6 +81,31 @@ class ExistsOp extends UnaryOp {
     Assert(args.expr$ instanceof SelectStm, 'expr$')
 
     this.expr$ = args.expr$
+  }
+}
+
+/*
+class NotOp extends UnaryOp {
+}
+*/
+
+class InOp extends UnaryOp {
+  constructor(args) {
+    super(args)
+
+    Assert(args, 'args')
+    Assert(Array.isArray(args.values$), 'args.values$')
+
+    this.column$ = args.column$
+    this.values$ = args.values$
+  }
+}
+
+class NullOp extends UnaryOp {
+  constructor(args) {
+    super(args)
+
+    this.column$ = args.column$
   }
 }
 
@@ -152,15 +177,25 @@ function where(obj) {
   const kvs = Object.keys(obj).map(k => [k, obj[k]])
 
   const expr = kvs.reduce((acc, [colname, x]) => {
-    const eq_expr = x instanceof QNode
-      ? x
-      : new EqOp({ column$: colname, value$: x })
+    let subexpr
 
-    if (!acc) {
-      return eq_expr
+    if (x instanceof QNode) {
+      subexpr = x
+    } else {
+      if (null == x) {
+        subexpr = new NullOp({ column$: colname })
+      } else if (Array.isArray(x)) {
+        subexpr = new InOp({ column$: colname, values$: x })
+      } else {
+        subexpr = new EqOp({ column$: colname, value$: x })
+      }
     }
 
-    return new AndOp({ lexpr$: acc, rexpr$: eq_expr })
+    if (!acc) {
+      return subexpr
+    }
+
+    return new AndOp({ lexpr$: acc, rexpr$: subexpr })
   }, null)
 
   return expr 
@@ -256,6 +291,22 @@ function sqlOfExpr(node) {
     return {
       sql: '?? = ?',
       bindings: [node.column$, node.value$]
+    }
+  }
+
+  if (node instanceof NullOp) {
+    return {
+      sql: '?? is null',
+      bindings: [node.column$]
+    }
+  }
+
+  if (node instanceof InOp) {
+    const tuple = node.values$.map(_ => '?')
+
+    return {
+      sql: '?? in (' + tuple.join(', ') + ')',
+      bindings: node.values$
     }
   }
 
