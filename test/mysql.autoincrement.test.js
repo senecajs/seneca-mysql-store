@@ -1,48 +1,52 @@
 'use strict'
 
-var Async = require('async')
-var Assert = require('chai').assert
+const { expect } = require('@hapi/code')
+const { make_it } = require('./support/helpers')
 
 function autoincrementTest (settings) {
-  var si = settings.seneca
-  var script = settings.script
+  const si = settings.seneca
 
-  var describe = script.describe
-  var it = script.it
+  const { script } = settings
+  const { describe } = script
+  const it = make_it(script)
 
   describe('Autoincrement tests', function () {
-    it('Autoincrement tests', function extended (done) {
-      Async.series(
-        {
-          removeAll: function (next) {
-            var foo = si.make({name$: 'incremental'})
-            foo.remove$({all$: true}, function (err, res) {
-              Assert(!err)
-              next()
-            })
-          },
-          allowAutoIncrementId: function (next) {
-            var inc = si.make('incremental')
-            inc.p1 = 'v1'
+    it('works with all$: true', function (done) {
+      const foo = si.make({name$: 'incremental'})
+      foo.remove$({ all$: true }, done)
+    })
 
-            inc.save$(function (err, inc1) {
-              Assert.isNull(err)
-              Assert.isNotNull(inc1.id)
+    it('works with all$: true', function (done) {
+      const inc = si.make('incremental')
+      inc.p1 = 'v1'
 
-              inc.load$({id: inc1.id}, function (err, inc2) {
-                Assert.isNull(err)
-                Assert.isNotNull(inc2)
-                Assert.equal(inc2.id, inc1.id)
-                Assert.equal(inc2.p1, 'v1')
-                next()
-              })
-            })
+      inc.save$(function (err, inc1) {
+        if (err) {
+          return done(err)
+        }
+
+        expect(null == inc1.id).to.equal(false)
+
+        return inc.load$({ id: inc1.id }, function (err, inc2) {
+          if (err) {
+            return done(err)
           }
-        },
-        function (err, out) {
-          Assert(!err)
-          done()
+
+          expect(inc2).to.contain({
+            id: inc1.id,
+            v1: 'v1'
+          })
+
+          expect(null == inc2).to.equal(false)
+
+          expect(inc2).to.contain({
+            id: inc1.id,
+            p1: 'v1'
+          })
+
+          return done()
         })
+      })
     })
   })
 }
