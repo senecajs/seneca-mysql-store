@@ -48,13 +48,10 @@ describe('MySQL suite tests ', function () {
     script: lab
   })
 
-  // TODO: Fix the upserts.
-  /*
   Shared.upserttest({
     seneca: si,
     script: lab
   })
-  */
 
   Extra.extendTest({
     seneca: si,
