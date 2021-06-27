@@ -27,8 +27,8 @@
     "build": "docker-compose build",
     "start": "docker-compose up",
     "stop": "docker-compose kill",
-    "test": "lab test/*.test.js -r console -v -L -m 3000 -t 72",
-    "test-some": "lab test/*.test.js -r console -v -L -g ",
+    "test": "lab -P '\\.test' test -r console -v -L -m 3000 -t 72",
+    "test-some": "lab -P '\\.test' test -r console -v -L -g ",
     "lint": "lab -dL",
     "coverage": "lab -v -P test -L -t 80 -r html > docs/coverage.html",
     "annotate": "docco mysql-store.js -o docs/annotated"
