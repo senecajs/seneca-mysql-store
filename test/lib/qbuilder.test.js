@@ -38,6 +38,8 @@ describe('qbuilder', () => {
 
 const Assert = require('assert')
 
+class QNode {}
+
 /*
 type insert_t = {
   whatami$: "insert_t";
@@ -51,10 +53,54 @@ function insert(args) {
   Assert.strictEqual(typeof into, 'string', 'into')
   Assert(values, 'values')
 
-  return {
-    whatami$: 'insert_t',
+  return new InsertStm({
     into$: into,
     values$: values
+  })
+}
+
+class InsertStm extends QNode {
+  constructor(args) {
+    super(args)
+
+    this.into$ = args.into$
+    this.values$ = args.values$
+  }
+}
+
+class Op extends QNode {}
+
+class UnaryOp extends Op {}
+
+class ExistsOp extends UnaryOp {
+  constructor(args) {
+    super(args)
+
+
+    Assert(args, 'args')
+    Assert(args.expr$ instanceof SelectStm, 'expr$')
+
+    this.expr$ = args.expr$
+  }
+}
+
+class BinaryOp extends Op {}
+
+class EqOp extends BinaryOp {
+  constructor(args) {
+    super(args)
+
+    this.column$ = args.column$
+    this.value$ = args.value$
+  }
+}
+
+class AndOp extends BinaryOp {
+  constructor(args) {
+    super(args)
+
+    this.lexpr$ = args.lexpr$
+    this.rexpr$ = args.rexpr$
   }
 }
 
@@ -91,13 +137,33 @@ type expr_exists_t = {
 */
 
 function exists(expr) {
-  Assert(expr, 'expr')
-  Assert.strictEqual(expr.whatami$, 'select_t')
+  return new ExistsOp({ expr$: expr })
+}
 
-  return {
-    whatami$: 'expr_exists_t',
-    expr$: expr
+function where(obj) {
+  if (obj instanceof UnaryOp || obj instanceof BinaryOp) {
+    return obj
   }
+
+  if (obj instanceof QNode) {
+    throw new Error(`The where-object is of the unsupported type`)
+  }
+
+  const kvs = Object.keys(obj).map(k => [k, obj[k]])
+
+  const expr = kvs.reduce((acc, [colname, x]) => {
+    const eq_expr = x instanceof QNode
+      ? x
+      : new EqOp({ column$: colname, value$: x })
+
+    if (!acc) {
+      return eq_expr
+    }
+
+    return new AndOp({ lexpr$: acc, rexpr$: eq_expr })
+  }, null)
+
+  return expr 
 }
 
 /*
@@ -108,34 +174,16 @@ function exists(expr) {
     limit$: int;
     order_by$: { [string]: [ -inf..-1 | 0..inf | 'desc' | 'asc' ] }
   }
- */
-
-function where(obj) {
-  if ('string' === typeof obj.whatami$) {
-    return obj
+*/
+class SelectStm {
+  constructor(args) {
+    this.from$ = args.from$
+    this.columns$ = args.column$ || '*'
+    this.offset$ = args.offset$ || null
+    this.limit$ = args.limit$ || null
+    this.order_by$ = args.order_by$ || null
+    this.where$ = args.where$ || null
   }
-
-  const kvs = Object.keys(obj).map(k => [k, obj[k]])
-
-  const expr = kvs.reduce((acc, [colname, x]) => {
-    const eq_expr = 'string' === typeof x.whatami$ ? x : {
-      whatami$: 'expr_eq_t',
-      column$: colname,
-      value$: x
-    }
-
-    if (!acc) {
-      return eq_expr
-    }
-
-    return {
-      whatami$: 'expr_and_t',
-      lexpr$: acc,
-      rexpr$: eq_expr
-    }
-  }, null)
-
-  return expr 
 }
 
 function select(args) {
@@ -148,15 +196,14 @@ function select(args) {
     where: w
   } = args
 
-  return {
-    whatami$: 'select_t',
+  return new SelectStm({
     from$: from,
     columns$: columns,
     offset$: offset,
     limit$: limit,
     order_by$: order_by,
     where$: where(w)
-  }
+  })
 }
 
 function sqlOfOrderBy(node) {
@@ -201,22 +248,22 @@ function sqlOfOrderBy(node) {
 }
 
 function sqlOfExpr(node) {
-  if ('select_t' === node.whatami$) {
+  if (node instanceof SelectStm) {
     return sqlOfSelect(node)
   }
 
-  if ('expr_eq_t' === node.whatami$) {
+  if (node instanceof EqOp) {
     return {
       sql: '?? = ?',
       bindings: [node.column$, node.value$]
     }
   }
 
-  if ('expr_exists_t' === node.whatami$) {
+  if (node instanceof ExistsOp) {
     return sqlOfExistsExpr(node)
   }
 
-  if ('expr_and_t' === node.whatami$) {
+  if (node instanceof AndOp) {
     const { lexpr$, rexpr$ } = node
 
     const lexpr_sql = sqlOfExpr(lexpr$)
@@ -228,11 +275,11 @@ function sqlOfExpr(node) {
     }
   }
 
-  Assert.fail(`Unknown expression type: "${node.whatami$}"`)
+  Assert.fail(`Unknown expression type: "${node && node.constructor}"`)
 }
 
 function sqlOfSelect(node) {
-  Assert.strictEqual(node.whatami$, 'select_t')
+  Assert(node instanceof SelectStm, 'node')
 
   const {
     from$,
@@ -297,7 +344,7 @@ function sqlOfSelect(node) {
 }
 
 function sqlOfExistsExpr(node) {
-  Assert.strictEqual(node.whatami$, 'expr_exists_t')
+  Assert(node instanceof ExistsOp, 'node')
 
   const { expr$ } = node
   const q = sqlOfSelect(expr$)
@@ -309,7 +356,7 @@ function sqlOfExistsExpr(node) {
 }
 
 function sqlOfInsert(node) {
-  Assert.strictEqual(node.whatami$, 'insert_t', 'node.whatami$')
+  Assert(node instanceof InsertStm, 'node')
 
   const { into$, values$ } = node
 
@@ -341,14 +388,14 @@ function sqlOfInsert(node) {
 function toSql(node) {
   Assert(node, 'node')
 
-  if ('insert_t' === node.whatami$) {
+  if (node instanceof InsertStm) {
     return sqlOfInsert(node)
   }
 
-  if ('select_t' === node.whatami$) {
+  if (node instanceof SelectStm) {
     return sqlOfSelect(node)
   }
 
-  Assert.fail(`Unknown node type: ${node.whatami$}`)
+  Assert.fail(`Unknown node type: ${node && node.constructor}`)
 }
 
