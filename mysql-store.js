@@ -1,6 +1,5 @@
 const MySQL = require('mysql')
 const DefaultConfig = require('./default_config.json')
-const Eraro = require('eraro')({ package: 'mysql' })
 
 const Util = require('util')
 const { intern } = require('./lib/intern')
@@ -37,11 +36,9 @@ function mysql_store (options) {
 
     return internals.connectionPool.getConnection((err, conn) => {
       if (err) {
-        seneca.log.error(`Failed to connect to the db as ${conf.username}`, err)
         return done(err)
       }
 
-      seneca.log.debug(`Connected to the db as ${conf.username}`)
       conn.release()
 
       return done(null, store)
@@ -79,10 +76,7 @@ function mysql_store (options) {
           await end()
           seneca.log.debug('Closed the connection to the db')
         } catch (err) {
-          seneca.log.error('Failed to close the connection to the db', err)
-
-          throw Eraro({
-            code: 'connection/end',
+          return seneca.fail('connection/end', {
             store: internals.name,
             error: err
           })
@@ -185,13 +179,14 @@ function mysql_store (options) {
   seneca.add({ init: store.name, tag: meta.tag }, function (args, done) {
     configure(internals.opts, function (err) {
       if (err) {
-        return done(Eraro(
-          'entity/configure',
-          'store: ' + store.name,
-          'error: ' + err,
-          'desc: ' + internals.desc
-        ))
+        return seneca.fail('entity/configure', {
+          store: internals.name,
+          error: err,
+          desc: internals.desc
+        })
       }
+
+      seneca.log.debug('Successfully connected to the database')
 
       return done()
     })
@@ -202,3 +197,12 @@ function mysql_store (options) {
 
 
 module.exports = mysql_store
+
+
+module.exports.errors = {
+  'entity/configure': 'Failed to connect to the database, store "<%=store%>", ' +
+    'error: "<%=error%>", desc: <%=desc%>',
+
+  'connection/end': 'Failed to close the connection, store "<%=store%>, ' +
+    'error: "<%=error%>"'
+}
