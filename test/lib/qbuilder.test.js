@@ -17,32 +17,15 @@ describe('qbuilder', () => {
   */
 
   it('', async () => {
-    const sel_node = select({
-      columns: ['id', 'email'],
-      from: 'users',
-      /*
-      where: not(exists(select({
-        columns: '*',
-        from: 'users',
-        where: { id: 'aaaa', email: null, favorite_fruits: ['oranges', 'melon'] }
-      }))),
-      */
-      where: and(
-        { id: 'zzzz', email: 'rr@voxgig.com' },
-
-        not(exists(select({
-          columns: '*',
-          from: 'users',
-          where: { favorite_fruits: ['oranges'] }
-        })))
-      ),
+    const node = update({
+      table: 'users',
+      set: { id: 'aaa' },
       limit: 1,
-      offset: 5,
       order_by: { email: -1, id: 1 }
     })
 
-    console.dir(sel_node, { depth: null })
-    console.dir(toSql(sel_node), { depth: 4 })
+    console.dir(node, { depth: null })
+    console.dir(toSql(node), { depth: 4 })
   })
 })
 
@@ -53,7 +36,6 @@ class QNode {}
 
 /*
 type insert_t = {
-  whatami$: "insert_t";
   into$: string;
   values$: object;
 }
@@ -77,6 +59,30 @@ class InsertStm extends QNode {
     this.into$ = args.into$
     this.values$ = args.values$
   }
+}
+
+class UpdateStm extends QNode {
+  constructor(args) {
+    super(args)
+
+    this.table$ = args.table$
+    this.set$ = args.set$
+    this.where$ = args.where$ || null
+    this.limit$ = args.limit$ || null
+    this.order_by$ = args.order_by$ || null
+  }
+}
+
+function update(args) {
+  const { table, set, limit, order_by, where: w } = args
+
+  return new UpdateStm({
+    table$: table,
+    set$: set,
+    limit$: limit,
+    order_by$: order_by,
+    where$: (w ? where(w) : null)
+  })
 }
 
 class Op extends QNode {}
@@ -143,38 +149,6 @@ class AndOp extends BinaryOp {
   }
 }
 
-/*
-type expr_t = [
-| select_t
-| expr_null_t
-| expr_not_t
-| expr_eq_t
-| expr_exists_t
-]
-
-type expr_null_t = {
-  expr$: expr_t
-}
-
-type expr_not_t = {
-  expr$: expr_t
-}
-
-type expr_in_t = {
-  unsafe_args$: 'a array
-}
-
-type expr_eq_t = {
-  column$: string;
-  value$: 'a
-}
-
-type expr_exists_t = {
-  whatami$: 'expr_exists_t';
-  expr$: select_t
-}
-*/
-
 function exists(expr) {
   return new ExistsOp({ expr$: expr })
 }
@@ -184,7 +158,7 @@ function not(expr) {
 }
 
 function and(left_val, right_val) {
-  const ensureExpr = v => v instanceof QNode ? v : ObjectExpr.ofObject(v)
+  const ensureExpr = v => v instanceof QNode ? v : WhereObjectExpr.ofObject(v)
 
   const lexpr = ensureExpr(left_val)
   const rexpr = ensureExpr(right_val)
@@ -192,7 +166,7 @@ function and(left_val, right_val) {
   return new AndOp({ lexpr$: lexpr, rexpr$: rexpr })
 }
 
-class ObjectExpr extends QNode {
+class WhereObjectExpr extends QNode {
   constructor(args) {
     super(args)
 
@@ -224,7 +198,7 @@ class ObjectExpr extends QNode {
       return new AndOp({ lexpr$: acc, rexpr$: subexpr })
     }, null)
 
-    return new ObjectExpr({ expr$: expr })
+    return new WhereObjectExpr({ expr$: expr })
   }
 }
 
@@ -237,7 +211,7 @@ function where(obj) {
     throw new Error(`The where-object is of the unsupported type`)
   }
 
-  return ObjectExpr.ofObject(obj)
+  return WhereObjectExpr.ofObject(obj)
 }
 
 /*
@@ -374,7 +348,7 @@ function sqlOfExpr(node) {
     }
   }
 
-  if (node instanceof ObjectExpr) {
+  if (node instanceof WhereObjectExpr) {
     return sqlOfExpr(node.expr$)
   }
 
@@ -446,6 +420,62 @@ function sqlOfSelect(node) {
   return { sql, bindings }
 }
 
+function sqlOfUpdate(node) {
+  const { table$, set$, where$, limit$, order_by$ } = node
+
+
+  let bindings = []
+  let sql = ''
+
+
+  sql += 'update ?? '
+  bindings.push(table$)
+
+  sql += 'set '
+
+
+  let first_set = true
+
+  for (const set_col in set$) {
+    const set_val = set$[set_col]
+
+    if (!first_set) {
+      sql += ', '
+    }
+
+    sql += '?? = ?'
+    bindings.push(set_col)
+    bindings.push(set_val)
+
+    first_set = false
+  }
+
+
+  if (null != where$) {
+    const where = sqlOfExpr(where$)
+
+    sql += ' where ' + where.sql
+    bindings = bindings.concat(where.bindings)
+  }
+
+
+  if (null != order_by$) {
+    const order_q = sqlOfOrderBy(order_by$)
+
+    sql += ' order by ' + order_q.sql
+    bindings = bindings.concat(order_q.bindings)
+  }
+
+
+  if (null != limit$) {
+    sql += ' limit ?'
+    bindings.push(limit$)
+  }
+
+
+  return { sql, bindings }
+}
+
 function sqlOfExistsExpr(node) {
   Assert(node instanceof ExistsOp, 'node')
 
@@ -497,6 +527,10 @@ function toSql(node) {
 
   if (node instanceof SelectStm) {
     return sqlOfSelect(node)
+  }
+
+  if (node instanceof UpdateStm) {
+    return sqlOfUpdate(node)
   }
 
   Assert.fail(`Unknown node type: ${node && node.constructor}`)
