@@ -27,7 +27,8 @@
     "build": "docker-compose build",
     "start": "docker-compose up",
     "stop": "docker-compose kill",
-    "test": "lab test/*.test.js -r console -v -L -m 3000 -t 72",
+    "test": "lab -P '\\.test' test -r console -v -L -m 3000 -t 72",
+    "test-some": "lab -P '\\.test' test -r console -v -L -g ",
     "lint": "lab -dL",
     "coverage": "lab -v -P test -L -t 80 -r html > docs/coverage.html",
     "annotate": "docco mysql-store.js -o docs/annotated"
@@ -46,9 +47,7 @@
     "plugin"
   ],
   "dependencies": {
-    "async": "2.0.1",
     "eraro": "0.4.1",
-    "lodash": "4.15.0",
     "mysql": "2.11.1",
     "node-uuid": "1.4.7"
   },
@@ -63,18 +62,19 @@
     "query-builder.js"
   ],
   "devDependencies": {
+    "@hapi/code": "8.0.3",
+    "@hapi/lab": "24.2.1",
+    "async": "3.2.0",
     "chai": "3.5.0",
-    "code": "3.0.x",
     "coveralls": "2.11.x",
     "docco": "0.7.x",
     "eslint-config-seneca": "3.x.x",
     "eslint-plugin-hapi": "4.x.x",
     "eslint-plugin-standard": "2.x.x",
-    "lab": "11.0.x",
     "pre-commit": "1.1.3",
-    "seneca": "plugin",
-    "seneca-entity": "1.3.x",
-    "seneca-store-test": "1.0.0"
+    "seneca": "3.23.3",
+    "seneca-entity": "14.0.0",
+    "seneca-store-test": "4.0.2"
   },
   "pre-commit": [
     "test"

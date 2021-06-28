@@ -1,19 +1,19 @@
 'use strict'
 
-var Async = require('async')
-var Assert = require('chai').assert
+const Async = require('async')
+const { assert: Assert } = require('chai')
+const { make_it } = require('./support/helpers')
 
-var scratch = {}
+const scratch = {}
 
 function extendTest (settings) {
-  var si = settings.seneca
-  var script = settings.script
+  const { script, seneca: si } = settings
 
-  var describe = script.describe
-  var it = script.it
+  const { describe } = script
+  const it = make_it(script)
 
   describe('Extended tests', function () {
-    it('Extended tests', function extended (done) {
+    it('Extended tests', function (done) {
       Async.series(
         {
           removeAll: function (next) {
@@ -131,12 +131,30 @@ function extendTest (settings) {
           },
 
           reportAllErrors: function (next) {
-            var foo = si.make('foo')
+            const foo = si.make('foo')
             foo.missing_attribute = 'v1'
 
+
+            const BAD_FIELD_ERROR_CODE = 'ER_BAD_FIELD_ERROR'
+            const stdoutWrite = process.stdout.write
+
+            process.stdout.write = output => {
+              if ('string' === typeof output &&
+                output.includes(BAD_FIELD_ERROR_CODE)) {
+                return
+              }
+
+              return stdoutWrite.apply(process.stdout, [output])
+            }
+
+
             foo.save$(function (err, foo1) {
+              process.stdout.write = stdoutWrite
+
               Assert.isNotNull(err)
-              next()
+              Assert(err.message.includes(BAD_FIELD_ERROR_CODE))
+
+              return next()
             })
           }
         },
