@@ -1,17 +1,16 @@
 'use strict'
 
-var Async = require('async')
-var Assert = require('chai').assert
+const Async = require('async')
+const { assert: Assert } = require('chai')
 const { make_it } = require('./support/helpers')
 
-var scratch = {}
+const scratch = {}
 
 function extendTest (settings) {
-  var si = settings.seneca
-  var script = settings.script
+  const { script, seneca: si } = settings
 
-  var describe = script.describe
-  var it = make_it(script)
+  const { describe } = script
+  const it = make_it(script)
 
   describe('Extended tests', function () {
     it('Extended tests', function (done) {

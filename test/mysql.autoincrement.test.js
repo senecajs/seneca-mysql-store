@@ -4,28 +4,27 @@ const { expect } = require('@hapi/code')
 const { make_it } = require('./support/helpers')
 
 function autoincrementTest (settings) {
-  const si = settings.seneca
+  const { script, seneca: si } = settings
 
-  const { script } = settings
   const { describe, beforeEach, afterEach } = script
   const it = make_it(script)
 
-  describe('Autoincrement tests', function () {
+  describe('Autoincrement tests', () => {
     beforeEach(() => clearDb(si))
     afterEach(() => clearDb(si))
 
-    it('delegates id generation to the db', function (done) {
+    it('delegates id generation to the db', (done) => {
       const inc = si.make('incremental')
       inc.p1 = 'v1'
 
-      inc.save$({ auto_increment$: true }, function (err, inc1) {
+      inc.save$({ auto_increment$: true }, (err, inc1) => {
         if (err) {
           return done(err)
         }
 
         expect(typeof inc1.id).to.equal('number')
 
-        return inc.load$({ id: inc1.id }, function (err, inc2) {
+        return inc.load$({ id: inc1.id }, (err, inc2) => {
           if (err) {
             return done(err)
           }
@@ -47,18 +46,18 @@ function autoincrementTest (settings) {
       })
     })
 
-    it('delegates id generation to the db, when upserting/creating', function (done) {
+    it('delegates id generation to the db, when upserting/creating', (done) => {
       const inc = si.make('incremental')
       inc.p1 = 'v1'
 
-      inc.save$({ upsert$: ['uniq'], auto_increment$: true }, function (err, inc1) {
+      inc.save$({ upsert$: ['uniq'], auto_increment$: true }, (err, inc1) => {
         if (err) {
           return done(err)
         }
 
         expect(typeof inc1.id).to.equal('number')
 
-        return inc.load$({ id: inc1.id }, function (err, inc2) {
+        return inc.load$({ id: inc1.id }, (err, inc2) => {
           if (err) {
             return done(err)
           }
@@ -80,24 +79,24 @@ function autoincrementTest (settings) {
       })
     })
 
-    it('delegates id generation to the db, when upserting/matching', function (done) {
+    it('delegates id generation to the db, when upserting/matching', (done) => {
       const new_id = 37
 
-      si.make('incremental').data$({ id: new_id, uniq: 1 }).save$(function (err) {
+      si.make('incremental').data$({ id: new_id, uniq: 1 }).save$((err) => {
         if (err) {
           return done(err)
         }
 
         return si.make('incremental')
           .data$({ p1: 'v1', uniq: 1 })
-          .save$({ upsert$: ['uniq'], auto_increment$: true }, function (err, inc1) {
+          .save$({ upsert$: ['uniq'], auto_increment$: true }, (err, inc1) => {
             if (err) {
               return done(err)
             }
 
             expect(inc1.id).to.equal(new_id)
 
-            return si.make('incremental').load$({ id: inc1.id }, function (err, inc2) {
+            return si.make('incremental').load$({ id: inc1.id }, (err, inc2) => {
               if (err) {
                 return done(err)
               }
