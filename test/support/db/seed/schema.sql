@@ -88,5 +88,8 @@ CREATE TABLE products (
 CREATE TABLE incremental (
   id INT AUTO_INCREMENT,
   p1 VARCHAR(255),
-  PRIMARY KEY (id)
+  uniq INT,
+
+  PRIMARY KEY (id),
+  UNIQUE(uniq)
 );

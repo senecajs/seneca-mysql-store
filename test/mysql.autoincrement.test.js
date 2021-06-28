@@ -7,25 +7,23 @@ function autoincrementTest (settings) {
   const si = settings.seneca
 
   const { script } = settings
-  const { describe } = script
+  const { describe, beforeEach, afterEach } = script
   const it = make_it(script)
 
   describe('Autoincrement tests', function () {
-    it('works with all$: true', function (done) {
-      const foo = si.make({name$: 'incremental'})
-      foo.remove$({ all$: true }, done)
-    })
+    beforeEach(() => clearDb(si))
+    afterEach(() => clearDb(si))
 
-    it('works with all$: true', function (done) {
+    it('delegates id generation to the db', function (done) {
       const inc = si.make('incremental')
       inc.p1 = 'v1'
 
-      inc.save$(function (err, inc1) {
+      inc.save$({ auto_increment$: true }, function (err, inc1) {
         if (err) {
           return done(err)
         }
 
-        expect(null == inc1.id).to.equal(false)
+        expect(typeof inc1.id).to.equal('number')
 
         return inc.load$({ id: inc1.id }, function (err, inc2) {
           if (err) {
@@ -34,7 +32,7 @@ function autoincrementTest (settings) {
 
           expect(inc2).to.contain({
             id: inc1.id,
-            v1: 'v1'
+            p1: 'v1'
           })
 
           expect(null == inc2).to.equal(false)
@@ -48,6 +46,89 @@ function autoincrementTest (settings) {
         })
       })
     })
+
+    it('delegates id generation to the db, when upserting/creating', function (done) {
+      const inc = si.make('incremental')
+      inc.p1 = 'v1'
+
+      inc.save$({ upsert$: ['uniq'], auto_increment$: true }, function (err, inc1) {
+        if (err) {
+          return done(err)
+        }
+
+        expect(typeof inc1.id).to.equal('number')
+
+        return inc.load$({ id: inc1.id }, function (err, inc2) {
+          if (err) {
+            return done(err)
+          }
+
+          expect(inc2).to.contain({
+            id: inc1.id,
+            p1: 'v1'
+          })
+
+          expect(null == inc2).to.equal(false)
+
+          expect(inc2).to.contain({
+            id: inc1.id,
+            p1: 'v1'
+          })
+
+          return done()
+        })
+      })
+    })
+
+    it('delegates id generation to the db, when upserting/matching', function (done) {
+      const new_id = 37
+
+      si.make('incremental').data$({ id: new_id, uniq: 1 }).save$(function (err) {
+        if (err) {
+          return done(err)
+        }
+
+        return si.make('incremental')
+          .data$({ p1: 'v1', uniq: 1 })
+          .save$({ upsert$: ['uniq'], auto_increment$: true }, function (err, inc1) {
+            if (err) {
+              return done(err)
+            }
+
+            expect(inc1.id).to.equal(new_id)
+
+            return si.make('incremental').load$({ id: inc1.id }, function (err, inc2) {
+              if (err) {
+                return done(err)
+              }
+
+              expect(inc2).to.contain({
+                id: inc1.id,
+                p1: 'v1'
+              })
+
+              expect(null == inc2).to.equal(false)
+
+              expect(inc2).to.contain({
+                id: inc1.id,
+                p1: 'v1'
+              })
+
+              return done()
+            })
+          })
+      })
+    })
+
+    async function clearDb(si) {
+      return new Promise((resolve, reject) => {
+        const done = (err, out) => err
+          ? reject(err)
+          : resolve(out)
+
+        return si.make('incremental').remove$({ all$: true }, done)
+      })
+    }
   })
 }
 

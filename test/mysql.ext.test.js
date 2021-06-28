@@ -2,6 +2,7 @@
 
 var Async = require('async')
 var Assert = require('chai').assert
+const { make_it } = require('./support/helpers')
 
 var scratch = {}
 
@@ -10,10 +11,10 @@ function extendTest (settings) {
   var script = settings.script
 
   var describe = script.describe
-  var it = script.it
+  var it = make_it(script)
 
   describe('Extended tests', function () {
-    it('Extended tests', function extended (done) {
+    it('Extended tests', function (done) {
       Async.series(
         {
           removeAll: function (next) {
