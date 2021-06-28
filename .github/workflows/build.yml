@@ -27,8 +27,8 @@ jobs:
         ports:
           - 3306:3306
         environment:
-          MYSQL_ROOT_PASSWORD: "itsasekret_85a96vbFdh"
-          MYSQL_DATABASE: "senecatest"
+          MYSQL_ROOT_PASSWORD: "itsasekret_ci_6g9b75t2gt528az"
+          MYSQL_DATABASE: "senecatest_ci_578gw9f6wf7"
 
     steps:
     - uses: actions/checkout@v2
