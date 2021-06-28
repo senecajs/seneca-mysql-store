@@ -1,11 +1,3 @@
-/* Copyright (c) 2012 Mircea Alexandru */
-/* execute using mysql -u root < dbschema.sql */
-
-DROP DATABASE IF EXISTS senecatest;
-CREATE DATABASE senecatest;
-
-USE senecatest;
-
 CREATE TABLE foo (
   id VARCHAR(36),
   p1 VARCHAR(255),

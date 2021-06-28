@@ -26,9 +26,13 @@ jobs:
         image: mysql:5.7
         ports:
           - 3306:3306
-        environment:
+        env:
           MYSQL_ROOT_PASSWORD: "itsasekret_ci_6g9b75t2gt528az"
           MYSQL_DATABASE: "senecatest_ci_578gw9f6wf7"
+
+        # NOTE: This is a healthcheck.
+        #
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
 
     steps:
     - uses: actions/checkout@v2
@@ -36,5 +40,12 @@ jobs:
       uses: actions/setup-node@v1
       with:
         node-version: ${{ matrix.node-version }}
+    - run: mysql "${CI_DB_NAME}" --host="${CI_DB_HOST}" --user="${CI_DB_USER}" --password="${CI_DB_PASSWORD}" --port="${CI_DB_PORT}" < ./test/support/db/seed/schema.sql
+      env:
+        CI_DB_NAME: "senecatest_ci_578gw9f6wf7"
+        CI_DB_HOST: "127.0.0.1"
+        CI_DB_USER: "root"
+        CI_DB_PASSWORD: "itsasekret_ci_6g9b75t2gt528az"
+        CI_DB_PORT: ${{ job.services.mysql.ports['3306'] }}
     - run: npm install
     - run: npm test
