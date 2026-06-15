@@ -1,5 +1,5 @@
 {
-  "name": "seneca-mysql-store",
+  "name": "@seneca/mysql-store",
   "version": "1.1.0",
   "description": "MySQL database layer for Seneca framework",
   "main": "mysql-store.js",

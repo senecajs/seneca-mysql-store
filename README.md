@@ -41,6 +41,27 @@ npm install seneca-mysql-store
 ```
 
 ## Quick Example
+
+## More Examples
+
+See [test/](test/) for usage examples.
+
+## Motivation
+
+A MySQL data store plugin for the Seneca framework.
+
+## Support
+
+If you are having difficulty, open an issue on the GitHub repo.
+
+## API
+
+See [README](README.md) and Seneca docs for message patterns.
+
+## Background
+
+This plugin uses the [mysql2](https://github.com/sidorares/node-mysql2) driver.
+
 ```js
 var seneca = require('seneca')()
 seneca.use('mysql-store', {
