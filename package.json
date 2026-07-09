@@ -48,7 +48,7 @@
   ],
   "dependencies": {
     "eraro": "0.4.1",
-    "mysql": "2.11.1",
+    "mysql": "2.14.0",
     "uuid": "3.4.0"
   },
   "files": [
