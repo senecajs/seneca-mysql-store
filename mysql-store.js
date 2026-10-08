@@ -1,4 +1,4 @@
-const MySQL = require('mysql')
+const MySQL = require('mysql2')
 const DefaultConfig = require('./default_config.json')
 
 const Util = require('util')
@@ -179,7 +179,10 @@ function mysql_store (options) {
   }
 
 
-  const meta = seneca.store.init(seneca, opts, store)
+  // Seneca 4 has no core seneca.store decoration; seneca-entity exports
+  // the store initializer instead. Seneca 3 keeps the core decoration.
+  const store_init = seneca.export('entity/init') || seneca.store.init
+  const meta = store_init(seneca, opts, store)
 
   internals.desc = meta.desc
 

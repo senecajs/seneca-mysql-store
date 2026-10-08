@@ -20,13 +20,11 @@ const DbConfig = require('./support/db/config')
 describe('MySQL suite tests ', function () {
   const si = makeSeneca({ mysqlStoreOpts: DbConfig })
 
-  before({}, function (done) {
-    si.ready(done)
-  })
+  before(() => new Promise((resolve, reject) =>
+    si.ready((err) => err ? reject(err) : resolve())))
 
-  after({}, function (done) {
-    si.close(done)
-  })
+  after(() => new Promise((resolve, reject) =>
+    si.close((err) => err ? reject(err) : resolve())))
 
   Shared.basictest({
     seneca: si,
@@ -70,13 +68,11 @@ describe('MySQL autoincrement tests ', function () {
   const si2 = makeSeneca({ mysqlStoreOpts: incrementConfig })
 
 
-  before({}, function (done) {
-    si2.ready(done)
-  })
+  before(() => new Promise((resolve, reject) =>
+    si2.ready((err) => err ? reject(err) : resolve())))
 
-  after({}, function (done) {
-    si2.close(done)
-  })
+  after(() => new Promise((resolve, reject) =>
+    si2.close((err) => err ? reject(err) : resolve())))
 
   Autoincrement.autoincrementTest({
     seneca: si2,
