@@ -1,0 +1,108 @@
+From 4316b72663e1a13fd89bcb96b586689538481480 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 8 Oct 2026 11:39:03 +0000
+Subject: [PATCH] Run CI on Node 24 and 22 with a MySQL 9.7 service container
+
+The service container uses the same host port (33306), credentials
+and SENECA_TEST_MYSQL_* variables as docker-compose.yml, waits for
+mysqladmin ping, and the job loads the test schema before npm test.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01LaHppcejXbSsAH4BZXNsjV
+---
+ .github/workflows/build.yml | 65 +++++++++++++++++++------------------
+ 1 file changed, 34 insertions(+), 31 deletions(-)
+
+diff --git a/.github/workflows/build.yml b/.github/workflows/build.yml
+index 31321ac..146da10 100644
+--- a/.github/workflows/build.yml
++++ b/.github/workflows/build.yml
+@@ -1,51 +1,54 @@
+-# This workflow will do a clean install of node dependencies, build the source code and run tests across different versions of node
+-# For more information see: https://help.github.com/actions/language-and-framework-guides/using-nodejs-with-github-actions
+-
+ name: build
+ 
+ on:
+   push:
+-    branches: [ master ]
++    branches: [master, main]
+   pull_request:
+-    branches: [ master ]
++    branches: [master, main]
+ 
+ jobs:
+   build:
+-    timeout-minutes: 4
++    timeout-minutes: 10
+ 
+     strategy:
+       fail-fast: false
+       matrix:
+-        os: [ubuntu-latest]
+-        node-version: [12.x]
++        node-version: [24.x, 22.x]
+ 
+-    runs-on: ${{ matrix.os }} 
++    runs-on: ubuntu-latest
+ 
+     services:
+       mysql:
+-        image: mysql:5.7
++        image: mysql:9.7
+         ports:
+-          - 3306:3306
++          - 33306:3306
+         env:
+-          MYSQL_ROOT_PASSWORD: "itsasekret_ci_6g9b75t2gt528az"
+-          MYSQL_DATABASE: "senecatest_ci_578gw9f6wf7"
+-
+-        # NOTE: This is a healthcheck.
+-        #
+-        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
++          MYSQL_ROOT_PASSWORD: itsasekret_85a96vbFdh
++          MYSQL_DATABASE: senecatest
++        options: >-
++          --health-cmd "mysqladmin ping -h 127.0.0.1 -uroot -pitsasekret_85a96vbFdh"
++          --health-interval 5s
++          --health-timeout 5s
++          --health-retries 20
++
++    env:
++      SENECA_TEST_MYSQL_HOST: 127.0.0.1
++      SENECA_TEST_MYSQL_PORT: 33306
++      SENECA_TEST_MYSQL_USER: root
++      SENECA_TEST_MYSQL_PASSWORD: itsasekret_85a96vbFdh
++      SENECA_TEST_MYSQL_DATABASE: senecatest
+ 
+     steps:
+-    - uses: actions/checkout@v2
+-    - name: Use Node.js ${{ matrix.node-version }}
+-      uses: actions/setup-node@v1
+-      with:
+-        node-version: ${{ matrix.node-version }}
+-    - run: mysql "${CI_DB_NAME}" --host="${CI_DB_HOST}" --user="${CI_DB_USER}" --password="${CI_DB_PASSWORD}" --port="${CI_DB_PORT}" < ./test/support/db/seed/schema.sql
+-      env:
+-        CI_DB_NAME: "senecatest_ci_578gw9f6wf7"
+-        CI_DB_HOST: "127.0.0.1"
+-        CI_DB_USER: "root"
+-        CI_DB_PASSWORD: "itsasekret_ci_6g9b75t2gt528az"
+-        CI_DB_PORT: ${{ job.services.mysql.ports['3306'] }}
+-    - run: npm install
+-    - run: npm test
++      - uses: actions/checkout@v4
++      - name: Use Node.js ${{ matrix.node-version }}
++        uses: actions/setup-node@v4
++        with:
++          node-version: ${{ matrix.node-version }}
++      # Service containers cannot mount the checkout, so the schema that
++      # docker-compose.yml loads through docker-entrypoint-initdb.d is
++      # loaded here with the runner's mysql client.
++      - name: Load test schema
++        run: mysql --host="$SENECA_TEST_MYSQL_HOST" --port="$SENECA_TEST_MYSQL_PORT" --user="$SENECA_TEST_MYSQL_USER" --password="$SENECA_TEST_MYSQL_PASSWORD" "$SENECA_TEST_MYSQL_DATABASE" < ./test/support/db/seed/schema.sql
++      - run: npm install
++      - run: npm run build --if-present
++      - run: npm test
+-- 
+2.43.0
+
