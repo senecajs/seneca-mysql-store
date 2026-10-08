@@ -1,21 +1,11 @@
-function getConfig() {
-  if (process.env.CI) {
-    return {
-      name: 'senecatest_ci_578gw9f6wf7',
-      host: 'localhost',
-      user: 'root',
-      password: 'itsasekret_ci_6g9b75t2gt528az',
-      port: 3306
-    }
-  }
+// Connection settings for the test database. The defaults match
+// docker-compose.yml (npm run services:up) and the CI service container.
+const env = process.env
 
-  return {
-    name: 'senecatest',
-    host: 'localhost',
-    user: 'root',
-    password: 'itsasekret_85a96vbFdh',
-    port: 3306
-  }
+module.exports = {
+  name: env.SENECA_TEST_MYSQL_DATABASE || 'senecatest',
+  host: env.SENECA_TEST_MYSQL_HOST || '127.0.0.1',
+  user: env.SENECA_TEST_MYSQL_USER || 'root',
+  password: env.SENECA_TEST_MYSQL_PASSWORD || 'itsasekret_85a96vbFdh',
+  port: parseInt(env.SENECA_TEST_MYSQL_PORT || '33306', 10)
 }
-
-module.exports = getConfig()

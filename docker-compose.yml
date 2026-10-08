@@ -1,10 +1,18 @@
-mysql:
-  image: mysql:5.7
-  ports:
-    - "3306:3306"
-  volumes:
-    - ./test/support/db/seed:/docker-entrypoint-initdb.d
-  working_dir: /var/mysql
-  environment:
-    MYSQL_ROOT_PASSWORD: "itsasekret_85a96vbFdh"
-    MYSQL_DATABASE: "senecatest"
+name: seneca-mysql-store
+
+services:
+  mysql:
+    image: mysql:9.7
+    container_name: seneca-mysql-store-mysql
+    ports:
+      - "33306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: "itsasekret_85a96vbFdh"
+      MYSQL_DATABASE: "senecatest"
+    volumes:
+      - ./test/support/db/seed:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-pitsasekret_85a96vbFdh"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
