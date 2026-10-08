@@ -1,3 +1,16 @@
+# 1.2.0 2026/10/08
+* Seneca 4 prerelease support (4.0.0-rc5 and 4.0.0): the store
+  initializer now comes from seneca-entity (`entity/init`).
+* Driver changed from `mysql` to `mysql2`, which authenticates against
+  MySQL 8 and 9 default accounts. Query errors carry mysql2 messages.
+* Upsert transactions are retried on `ER_LOCK_DEADLOCK`.
+* Tested on Node 24 and 22 against MySQL 9.7; `docker-compose.yml` with
+  `npm run services:up` / `services:down`.
+* Tests run on @hapi/lab 26 and seneca-store-test 6; lint removed from
+  `npm test`. Removed Travis, coveralls, pre-commit.
+* Documentation reorganized into docs/ (tutorials, how-to, reference,
+  explanation).
+
 # 1.1.0 2016/08/27
 * Added Seneca 3 and Node 6 support
 * Dropped Node 0.10, 0.12, 5 support
