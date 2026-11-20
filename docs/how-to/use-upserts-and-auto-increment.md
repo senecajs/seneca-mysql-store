@@ -37,7 +37,7 @@ plain insert happens.
 
 `auto_increment$` also works together with `upsert$`.
 
-Output of the example with `seneca@4.0.0-rc5`:
+Output of the example:
 
 ```
 same id true username jimihendrix

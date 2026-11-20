@@ -6,7 +6,7 @@ const env = process.env
 
 const seneca = Seneca({ legacy: false })
   .test()
-  .use('entity')
+  .use('@seneca/entity', { mem_store: false })
   .use(require('../../mysql-store.js'), {
     name: env.SENECA_TEST_MYSQL_DATABASE || 'senecatest',
     host: env.SENECA_TEST_MYSQL_HOST || '127.0.0.1',

@@ -32,11 +32,9 @@ correctness.
 
 ## Seneca 3 and Seneca 4
 
-The store obtains the entity store initializer from
-`seneca.export('entity/init')`, which `seneca-entity` provides. Seneca 3
-also had a core `seneca.store` decoration, used as a fallback. Close is
-wired by `seneca-entity` 28 on `sys:seneca,cmd:close`. On Seneca 3.38
-with `seneca-entity` 28 that hook is not reached, the pool stays open
-and the process does not exit, so this release is tested on Seneca 4
-only. On
-Seneca 4 query errors reach callers unwrapped.
+Version 2 supports Seneca 4 only. The store obtains the entity store
+initializer from `seneca.export('entity/init')`, which `@seneca/entity`
+provides, so load the entity plugin first. The core `seneca.store`
+decoration of Seneca 3 is no longer used. Close is wired by
+`@seneca/entity` on `sys:seneca,cmd:close`. On Seneca 4 query errors
+reach callers unwrapped.

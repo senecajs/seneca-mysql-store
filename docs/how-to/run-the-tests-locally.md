@@ -2,7 +2,7 @@
 
 Goal: run the full test suite against a real MySQL server.
 
-1. Use Node 24 (or 22) and install dependencies:
+1. Use Node.js 24 or later and install dependencies:
 
    ```sh
    npm install
@@ -53,5 +53,5 @@ To use your own server, create the tables from
 `test/support/db/seed/schema.sql` and set the variables.
 
 The test files are `test/mysql.test.js` (runs the shared
-`seneca-store-test` suites), `test/mysql.ext.test.js` and
+`@seneca/store-test` suites), `test/mysql.ext.test.js` and
 `test/mysql.autoincrement.test.js`.

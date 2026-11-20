@@ -3,10 +3,11 @@
 
 # @seneca/mysql-store
 
-A MySQL entity store for Seneca. It implements the `seneca-entity`
+A MySQL entity store for Seneca. It implements the `@seneca/entity`
 store actions (save, load, list, remove, native) on MySQL tables using
-the `mysql2` driver. It is tested with Seneca 4 (4.0.0-rc5 and 4.0.0)
-on Node 24 and 22 against MySQL 9.7.
+the `mysql2` driver. It needs Seneca 4 (`seneca` `^4.0.0`), the entity
+plugin `@seneca/entity` 29 and Node.js 24 or later, and is tested
+against MySQL 9.7. Seneca 3 users stay on `seneca-mysql-store@1`.
 
 [![npm version][npm-badge]][npm-url]
 [![build][build-badge]][build-url]
@@ -17,7 +18,7 @@ on Node 24 and 22 against MySQL 9.7.
 ## Install
 
 ```sh
-npm install seneca seneca-entity @seneca/mysql-store
+npm install seneca@^4 @seneca/entity @seneca/mysql-store
 ```
 
 You need a MySQL server with one table per entity type.
@@ -28,7 +29,7 @@ You need a MySQL server with one table per entity type.
 const Seneca = require('seneca')
 
 const seneca = Seneca()
-  .use('entity')
+  .use('@seneca/entity', { mem_store: false })
   .use('@seneca/mysql-store', {
     name: 'senecatest',
     host: '127.0.0.1',
@@ -83,8 +84,7 @@ The full index is in [docs/README.md](docs/README.md).
 ## Contributing
 
 The [Senecajs org](https://github.com/senecajs) encourages open
-participation. To run the tests (Node 24 or 22, Seneca 4 prerelease as
-devDependency):
+participation. To run the tests (Node.js 24 or later):
 
 ```sh
 npm install
@@ -100,12 +100,13 @@ apply them with `git am .patches/*.patch`.
 ## Background
 
 Originally written by Mircea Alexandru, maintained by the Senecajs
-contributors. Version 1.2 moved to the `mysql2` driver and Seneca 4.
+contributors. Version 2.0 is the first published as
+`@seneca/mysql-store`; it moved to the `mysql2` driver and Seneca 4.
 
-| Seneca | Node | MySQL | Status |
-| ------ | ---- | ----- | ------ |
-| 4.x (4.0.0-rc5 and later) | 22, 24 | 9.7 | tested |
-| 3.x | as Seneca 3 | 5.7 and later | not supported with seneca-entity 28: queries work but close does not end the pool, so the process does not exit (see GitHub issues) |
+| Version | Package | Seneca | Entity plugin | Node | MySQL |
+| ------- | ------- | ------ | ------------- | ---- | ----- |
+| 2.x | `@seneca/mysql-store` | 4 | `@seneca/entity` 29 | 24 or later | 9.7 tested |
+| 1.1.x | `seneca-mysql-store` | 3 | `seneca-entity` | as Seneca 3 | 5.7 and later, `mysql` driver |
 
 Released under the [MIT license](LICENSE).
 
