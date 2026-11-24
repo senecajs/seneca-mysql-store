@@ -6,10 +6,10 @@ five minutes.
 ## 1. Install
 
 ```sh
-npm install seneca seneca-entity @seneca/mysql-store
+npm install seneca@^4 @seneca/entity @seneca/mysql-store
 ```
 
-The plugin needs Node 22 or later and Seneca 4.
+The plugin needs Node.js 24 or later, Seneca 4 and `@seneca/entity` 29.
 
 ## 2. Start a database
 
@@ -34,7 +34,7 @@ const env = process.env
 
 const seneca = Seneca({ legacy: false })
   .test()
-  .use('entity')
+  .use('@seneca/entity', { mem_store: false })
   .use(require('../../mysql-store.js'), {
     name: env.SENECA_TEST_MYSQL_DATABASE || 'senecatest',
     host: env.SENECA_TEST_MYSQL_HOST || '127.0.0.1',
@@ -76,7 +76,7 @@ of the relative `require`.
 node docs/examples/getting-started.js
 ```
 
-Output with `seneca@4.0.0-rc5`:
+Output:
 
 ```
 saved apple id length 36
@@ -89,7 +89,7 @@ closed
 
 ## What happened
 
-1. `seneca-entity` adds the entity API. The store registers the
+1. `@seneca/entity` adds the entity API. The store registers the
    `sys:entity` actions behind it.
 2. On init the plugin creates a `mysql2` connection pool and checks out
    one connection to verify the settings.

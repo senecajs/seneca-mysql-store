@@ -6,7 +6,7 @@
  */
 
 const Seneca = require('seneca')
-const Shared = require('seneca-store-test')
+const Shared = require('@seneca/store-test')
 const Extra = require('./mysql.ext.test.js')
 const Autoincrement = require('./mysql.autoincrement.test.js')
 
@@ -82,15 +82,9 @@ describe('MySQL autoincrement tests ', function () {
 
 
 function makeSeneca (opts = {}) {
-  const si = Seneca({
-    default_plugins: {
-      'mem-store': false
-    }
-  })
+  const si = Seneca()
 
-  if (si.version >= '2.0.0') {
-    si.use('entity')
-  }
+  si.use('@seneca/entity', { mem_store: false })
 
   const { mysqlStoreOpts = {} } = opts
   si.use(require('../mysql-store.js'), mysqlStoreOpts)

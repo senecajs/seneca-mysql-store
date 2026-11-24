@@ -1,6 +1,6 @@
 # Messages
 
-The store registers the standard `seneca-entity` store actions. You
+The store registers the standard `@seneca/entity` store actions. You
 normally call them through entity methods (`save$`, `load$`, ...). Each
 message carries `ent` or `qent` (the entity) and `q` (the query). When
 `map` is set, the patterns also include `zone`, `base` and `name`.
@@ -53,7 +53,7 @@ Reply: `null` unless `load$` is set.
 
 ## close
 
-Registered by `seneca-entity` on `sys:seneca,cmd:close`. Ends the pool
+Registered by `@seneca/entity` on `sys:seneca,cmd:close`. Ends the pool
 when Seneca 4 closes. Fails with
 `connection/end`.
 

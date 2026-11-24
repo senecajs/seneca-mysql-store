@@ -10,7 +10,7 @@ const STORE_NAME = 'mysql-store'
 function mysql_store (options) {
   const seneca = this
 
-  const opts = seneca.util.deepextend(DefaultConfig, options)
+  const opts = seneca.util.deep(DefaultConfig, options)
 
   const internals = {
     name: STORE_NAME,
@@ -179,9 +179,9 @@ function mysql_store (options) {
   }
 
 
-  // Seneca 4 has no core seneca.store decoration; seneca-entity exports
-  // the store initializer instead. Seneca 3 keeps the core decoration.
-  const store_init = seneca.export('entity/init') || seneca.store.init
+  // The entity plugin (@seneca/entity) exports the store initializer.
+  // Load it before this store.
+  const store_init = seneca.export('entity/init')
   const meta = store_init(seneca, opts, store)
 
   internals.desc = meta.desc

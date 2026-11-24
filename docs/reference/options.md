@@ -32,7 +32,7 @@ prefer the object form.
 
 | Option | Type | Default | Effect |
 | ------ | ---- | ------- | ------ |
-| `map` | object | all entities | Handled by `seneca-entity`: maps entity canons to this store, for example `{ '-/-/incremental': '*' }`. Lets several stores serve different entities. |
+| `map` | object | all entities | Handled by `@seneca/entity`: maps entity canons to this store, for example `{ '-/-/incremental': '*' }`. Lets several stores serve different entities. |
 
 ## Unused defaults
 

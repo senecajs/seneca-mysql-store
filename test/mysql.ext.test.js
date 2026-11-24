@@ -152,11 +152,10 @@ function extendTest (settings) {
               process.stdout.write = stdoutWrite
 
               Assert.isNotNull(err)
-              // Seneca 4 replies with the original driver error; Seneca 3
-              // wraps it (err.orig). mysql2 keeps the code in err.code.
-              const orig = err.orig || err
-              Assert(BAD_FIELD_ERROR_CODE === orig.code ||
-                orig.message.includes(BAD_FIELD_ERROR_CODE))
+              // Seneca 4 replies with the original driver error.
+              // mysql2 keeps the code in err.code.
+              Assert(BAD_FIELD_ERROR_CODE === err.code ||
+                err.message.includes(BAD_FIELD_ERROR_CODE))
 
               return next()
             })
